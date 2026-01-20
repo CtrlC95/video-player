@@ -40,7 +40,7 @@
   import TaggingToolApp from './apps/tagging-tool/App.vue'
   import EditToolApp from './apps/edit-tool/App.vue'
 
-  const selectedApp = ref<'video-player' | 'tagging-tool' | 'edit-tool'>('video-player')
+  const selectedApp = ref<'video-player' | 'tagging-tool' | 'edit-tool'>('tagging-tool')
 </script>
 
 <style scoped>

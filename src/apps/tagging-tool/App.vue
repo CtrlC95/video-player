@@ -1,100 +1,67 @@
 <template>
   <div class="tagging-tool-app" @keydown="handleKeydown">
-    <aside class="sidebar">
-      <div class="sidebar-content">
-        <button class="btn-select" @click="handleSelectDirectory">
-          {{ currentPath ? 'Change Directory' : 'Select Directory' }}
-        </button>
+    <FileListSidebar
+      :current-path="currentPath"
+      :filtered-files="filteredFiles"
+      :selected-file="selectedFile"
+      :filter-by="filterBy"
+      :videos-in-database="videosInDatabase"
+      :unique-creators="uniqueCreators"
+      :unique-songs="uniqueSongs"
+      :unique-artists="uniqueArtistsForSearch"
+      @select-directory="handleSelectDirectory"
+      @filter-change="filterBy = $event"
+      @field-filters-change="fieldFilters = $event"
+      @search-change="
+        (field, creator, song, artist) => {
+          searchField = field
+          creatorSearch = creator
+          songSearch = song
+          artistSearch = artist
+        }
+      "
+      @select-file="selectFile"
+    />
 
-        <select v-model="filterBy" class="filter-select">
-          <option value="none">None</option>
-          <option value="creator">Missing Creator</option>
-          <option value="songName">Missing Song Name</option>
-          <option value="artist">Missing Artist</option>
-          <option value="webAddress">Missing Web Address</option>
-        </select>
+    <VideoPlayer
+      :current-path="currentPath"
+      :selected-file="selectedFile"
+      :directory-handle="directoryHandle"
+    />
 
-        <div class="video-count">
-          {{ filteredFiles.length }} video{{ filteredFiles.length !== 1 ? 's' : '' }}
-        </div>
-      </div>
-
-      <div v-if="filteredFiles.length > 0" class="file-list">
-        <div
-          v-for="file in filteredFiles"
-          :key="file.name"
-          class="file-item"
-          :class="{
-            selected: selectedFile?.name === file.name,
-            'not-in-database': !isFileInDatabase(file.name),
-          }"
-          @click="selectFile(file)"
-        >
-          <span class="file-icon">{{ file.isDirectory ? '📁' : '📄' }}</span>
-          <span class="file-name">{{ file.name }}</span>
-        </div>
-      </div>
-
-      <div v-else-if="currentPath" class="empty-state-sidebar">
-        <p>No untagged videos found</p>
-      </div>
-    </aside>
-
-    <main class="main-content">
-      <div v-if="!selectedFile" class="empty-state">
-        <p>{{ currentPath ? 'Select a video to tag' : 'Select a directory to browse' }}</p>
-      </div>
-
-      <div v-else class="player-wrapper">
-        <video
-          v-if="videoUrl"
-          ref="videoPlayer"
-          :src="videoUrl"
-          controls
-          class="video-player"
-        ></video>
-        <div v-else class="video-placeholder">Loading video...</div>
-      </div>
-    </main>
-
-    <aside class="right-sidebar">
-      <div v-if="selectedFile" class="tagging-panel">
-        <h2 class="video-title">{{ selectedFile.name }}</h2>
-
-        <div class="form-group">
-          <label>Creator</label>
-          <input v-model="creator" type="text" placeholder="Creator name" />
-        </div>
-
-        <div class="form-group">
-          <label>Song Name</label>
-          <input v-model="songName" type="text" placeholder="Song name" />
-        </div>
-
-        <div class="form-group">
-          <label>Artist</label>
-          <input v-model="artist" type="text" placeholder="Artist name" />
-        </div>
-
-        <div class="form-group">
-          <label>Web Address</label>
-          <input v-model="webAddress" type="text" placeholder="https://..." />
-        </div>
-
-        <button class="btn-save" @click="saveTags">Save</button>
-
-        <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
-      </div>
-    </aside>
+    <TaggingForm
+      :selected-file="selectedFile"
+      :creator="creator"
+      :song-name="songName"
+      :artist="artist"
+      :web-address="webAddress"
+      :main-girl="mainGirl"
+      :theme="theme"
+      :save-message="saveMessage"
+      :videos-in-database="videosInDatabase"
+      :unique-creators="uniqueCreators"
+      :unique-main-girls="uniqueMainGirls"
+      :unique-themes="uniqueThemes"
+      @update:creator="creator = $event"
+      @update:song-name="songName = $event"
+      @update:artist="artist = $event"
+      @update:web-address="webAddress = $event"
+      @update:main-girl="mainGirl = $event"
+      @update:theme="theme = $event"
+      @save="saveTags"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch, onMounted } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import { useVideoFileBrowser } from '../../shared/composables/useFileBrowser'
   import type { FileItem } from '../../shared/composables/useFileBrowser'
   import { videoDataService } from '../../shared/services/videoDataService'
   import type { VideoMetadata } from '../../shared/types/media'
+  import FileListSidebar from './components/FileListSidebar.vue'
+  import VideoPlayer from './components/VideoPlayer.vue'
+  import TaggingForm from './components/TaggingForm.vue'
 
   defineOptions({
     name: 'TaggingToolApp',
@@ -102,30 +69,151 @@
 
   const { currentPath, files, selectDirectory, directoryHandle } = useVideoFileBrowser()
 
+  // Form state
   const selectedFile = ref<FileItem | null>(null)
-  const videoUrl = ref('')
   const creator = ref('')
   const songName = ref('')
   const artist = ref('')
   const webAddress = ref('')
+  const mainGirl = ref('')
+  const theme = ref('')
   const saveMessage = ref('')
+
+  // Database and filter state
   const isInitialized = ref(false)
   const videosInDatabase = ref<VideoMetadata[]>([])
-  const filterBy = ref<'none' | 'creator' | 'songName' | 'artist' | 'webAddress'>('none')
+  const filterBy = ref<'all' | 'untagged' | 'missing'>('all')
+  const searchField = ref('creator')
+  const creatorSearch = ref('')
+  const songSearch = ref('')
+  const artistSearch = ref('')
+
+  interface FieldFilterState {
+    missing: boolean
+    exists: boolean
+  }
+
+  const fieldFilters = ref<Record<string, FieldFilterState>>({
+    creator: { missing: false, exists: false },
+    songName: { missing: false, exists: false },
+    artist: { missing: false, exists: false },
+    webAddress: { missing: false, exists: false },
+    mainGirl: { missing: false, exists: false },
+    theme: { missing: false, exists: false },
+  })
+
+  // Computed properties for unique values
+  const uniqueCreators = computed(() => {
+    const creatorSet = new Set<string>()
+    videosInDatabase.value.forEach((video) => {
+      if (video.creator) creatorSet.add(video.creator)
+    })
+    return Array.from(creatorSet).sort()
+  })
+
+  const uniqueMainGirls = computed(() => {
+    const girlSet = new Set<string>()
+    videosInDatabase.value.forEach((video) => {
+      if (video.mainGirl) girlSet.add(video.mainGirl)
+    })
+    return Array.from(girlSet).sort()
+  })
+
+  const uniqueThemes = computed(() => {
+    const themeSet = new Set<string>()
+    videosInDatabase.value.forEach((video) => {
+      if (video.theme) themeSet.add(video.theme)
+    })
+    return Array.from(themeSet).sort()
+  })
+
+  const uniqueSongs = computed(() => {
+    const songSet = new Set<string>()
+    videosInDatabase.value.forEach((video) => {
+      if (video.songName) songSet.add(video.songName)
+    })
+    return Array.from(songSet).sort()
+  })
+
+  const uniqueArtistsForSearch = computed(() => {
+    const artistSet = new Set<string>()
+    videosInDatabase.value.forEach((video) => {
+      if (video.artist) artistSet.add(video.artist)
+    })
+    return Array.from(artistSet).sort()
+  })
 
   // Filter files based on database status and selected filter
   const filteredFiles = computed(() => {
-    let result = files.value.filter((file) => !isFileInDatabase(file.name))
+    let result: any[] = []
 
-    // If a filter is selected, show files from database with missing values instead
-    if (filterBy.value !== 'none') {
+    // Show all database entries
+    if (filterBy.value === 'all') {
       result = videosInDatabase.value
         .filter((video) => {
-          if (filterBy.value === 'creator') return !video.creator
-          if (filterBy.value === 'songName') return !video.songName
-          if (filterBy.value === 'artist') return !video.artist
-          if (filterBy.value === 'webAddress') return !video.webAddress
-          return false
+          if (searchField.value === 'creator') {
+            if (!creatorSearch.value) return true
+            return video.creator.toLowerCase().includes(creatorSearch.value.toLowerCase())
+          } else if (searchField.value === 'song') {
+            const hasSongTerm = songSearch.value.length > 0
+            const hasArtistTerm = artistSearch.value.length > 0
+
+            if (!hasSongTerm && !hasArtistTerm) return true
+
+            const songMatch =
+              !hasSongTerm || video.songName.toLowerCase().includes(songSearch.value.toLowerCase())
+            const artistMatch =
+              !hasArtistTerm ||
+              video.artist.toLowerCase().includes(artistSearch.value.toLowerCase())
+
+            return songMatch && artistMatch
+          }
+          return true
+        })
+        .map((video) => ({
+          name: video.fileName,
+          isDirectory: false,
+          fullPath: video.fileName,
+          handle: null,
+        }))
+    }
+    // Show untagged videos (not in database)
+    else if (filterBy.value === 'untagged') {
+      result = files.value.filter((file) => !isFileInDatabase(file.name))
+    }
+    // Show database entries with missing specific fields
+    else if (filterBy.value === 'missing') {
+      result = videosInDatabase.value
+        .filter((video) => {
+          const hasActiveFilter = Object.values(fieldFilters.value).some(
+            (f) => f.missing || f.exists
+          )
+
+          if (!hasActiveFilter) return false
+
+          const checkField = (field: string, fieldValue: string | undefined): boolean => {
+            const filter = fieldFilters.value[field]
+            const isEmpty = !fieldValue
+
+            if (!filter.missing && !filter.exists) return false
+
+            if (filter.missing && filter.exists) return true
+
+            if (filter.missing) return isEmpty
+
+            if (filter.exists) return !isEmpty
+
+            return false
+          }
+
+          return (
+            checkField('creator', video.creator) ||
+            checkField('songName', video.songName) ||
+            checkField('artist', video.artist) ||
+            checkField('webAddress', video.webAddress) ||
+            checkField('mainGirl', video.mainGirl) ||
+            checkField('theme', video.theme)
+          )
         })
         .map((video) => ({
           name: video.fileName,
@@ -138,7 +226,7 @@
     return result
   })
 
-  // Initialize videoDataService when directory is selected
+  // Directory selection
   async function handleSelectDirectory() {
     await selectDirectory()
     if (directoryHandle.value) {
@@ -148,75 +236,42 @@
     }
   }
 
+  // Check if file is in database
   function isFileInDatabase(fileName: string): boolean {
     return videosInDatabase.value.some((v) => v.fileName === fileName)
   }
 
-  // Watch for selected file changes and load video
-  watch(
-    selectedFile,
-    async (newFile) => {
-      // Clean up old URL
-      if (videoUrl.value) {
-        URL.revokeObjectURL(videoUrl.value)
-      }
-
-      if (!newFile || !directoryHandle.value) {
-        videoUrl.value = ''
-        return
-      }
-
-      try {
-        let fileHandle = newFile.handle
-
-        // If no handle, try to get it from the directory
-        if (!fileHandle) {
-          fileHandle = await directoryHandle.value.getFileHandle(newFile.name)
-        }
-
-        const file = await fileHandle.getFile()
-        videoUrl.value = URL.createObjectURL(file)
-      } catch (error) {
-        console.error('Error loading video file:', error)
-        videoUrl.value = ''
-      }
-    },
-    { immediate: false }
-  )
-
+  // Select and load file
   async function selectFile(file: FileItem) {
     selectedFile.value = file
     saveMessage.value = ''
 
     if (isInitialized.value) {
-      // Try to load existing metadata
       const existingData = await videoDataService.getVideoByFileName(file.name)
       if (existingData) {
         creator.value = existingData.creator
         songName.value = existingData.songName
         artist.value = existingData.artist
         webAddress.value = existingData.webAddress
+        mainGirl.value = existingData.mainGirl || ''
+        theme.value = existingData.theme || ''
       } else {
-        // Auto-fill from filename if it contains " - "
         parseFilename(file.name)
       }
     } else {
-      // Auto-fill from filename if it contains " - "
       parseFilename(file.name)
     }
   }
 
+  // Parse filename to auto-fill fields
   function parseFilename(filename: string) {
-    // Remove file extension
     let nameWithoutExt = filename.split('.').slice(0, -1).join('.')
 
-    // Remove PMV or PMW and everything after
     const pmvIndex = nameWithoutExt.search(/\s+(PMV|PMW)/i)
     if (pmvIndex !== -1) {
       nameWithoutExt = nameWithoutExt.substring(0, pmvIndex)
     }
 
-    // Check if filename contains " - "
     if (nameWithoutExt.includes(' - ')) {
       const parts = nameWithoutExt.split(' - ')
       if (parts.length >= 2) {
@@ -224,20 +279,23 @@
         artist.value = parts[1].trim()
         creator.value = ''
         webAddress.value = ''
+        mainGirl.value = ''
+        theme.value = ''
       }
     } else {
-      // No dash found, clear all fields
       creator.value = ''
       songName.value = ''
       artist.value = ''
       webAddress.value = ''
+      mainGirl.value = ''
+      theme.value = ''
     }
   }
 
+  // Save tags to database
   async function saveTags() {
     if (!selectedFile.value) return
 
-    // Get the next file BEFORE reloading the database
     const currentIndex = filteredFiles.value.findIndex((f) => f.name === selectedFile.value?.name)
     const nextFile =
       currentIndex < filteredFiles.value.length - 1 ? filteredFiles.value[currentIndex + 1] : null
@@ -248,16 +306,18 @@
       songName: songName.value,
       artist: artist.value,
       webAddress: webAddress.value,
+      mainGirl: mainGirl.value,
+      theme: theme.value,
       weightScore: 1,
+      delete: 'no',
+      edit: 'no',
     }
 
     if (isInitialized.value) {
       await videoDataService.addOrUpdateVideo(videoData)
-      // Reload the database to update the list colors
       videosInDatabase.value = await videoDataService.loadVideos()
       saveMessage.value = 'Saved to videos.json!'
 
-      // Jump to next video if available
       if (nextFile) {
         selectFile(nextFile)
       }
@@ -271,25 +331,21 @@
     }, 3000)
   }
 
+  // Keyboard navigation
   function handleKeydown(event: KeyboardEvent) {
-    // Arrow up - previous file
     if (event.key === 'ArrowUp') {
       event.preventDefault()
       const currentIndex = filteredFiles.value.findIndex((f) => f.name === selectedFile.value?.name)
       if (currentIndex > 0) {
         selectFile(filteredFiles.value[currentIndex - 1])
       }
-    }
-    // Arrow down - next file
-    else if (event.key === 'ArrowDown') {
+    } else if (event.key === 'ArrowDown') {
       event.preventDefault()
       const currentIndex = filteredFiles.value.findIndex((f) => f.name === selectedFile.value?.name)
       if (currentIndex < filteredFiles.value.length - 1) {
         selectFile(filteredFiles.value[currentIndex + 1])
       }
-    }
-    // Enter - save
-    else if (event.key === 'Enter') {
+    } else if (event.key === 'Enter') {
       event.preventDefault()
       saveTags()
     }
@@ -302,248 +358,5 @@
     height: 100%;
     display: flex;
     flex-direction: row;
-  }
-
-  .sidebar {
-    width: 250px;
-    padding-top: 50px;
-    background: #494949;
-    border-right: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .sidebar-content {
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .btn-select {
-    padding: 0.75rem 1rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: background 0.2s ease;
-  }
-
-  .btn-select:hover {
-    background: #5568d3;
-  }
-
-  .filter-select {
-    width: 100%;
-    padding: 0.75rem;
-    background: #ffffff;
-    color: #333;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 0.95rem;
-    cursor: pointer;
-  }
-
-  .filter-select:focus {
-    outline: none;
-    border-color: #667eea;
-  }
-
-  .video-count {
-    padding: 0.5rem 0.75rem;
-    color: #999;
-    font-size: 0.85rem;
-    text-align: center;
-  }
-
-  .main-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: transparent;
-  }
-
-  .player-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-
-  .video-player {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border: 2px solid #667eea;
-    border-radius: 4px;
-    background: #000;
-  }
-
-  .video-placeholder {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border: 2px solid #667eea;
-    border-radius: 4px;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-  }
-
-  .right-sidebar {
-    width: 300px;
-    padding-top: 50px;
-    flex: 0 0 300px;
-    background: #494949;
-    border-left: 1px solid #e0e0e0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .tagging-panel {
-    padding: 1.5rem;
-    box-sizing: border-box;
-  }
-
-  .video-title {
-    margin: 0 0 1.5rem 0;
-    color: #333;
-    font-size: 1.5rem;
-    word-break: break-word;
-  }
-
-  .form-group {
-    margin-bottom: 1.5rem;
-  }
-
-  .file-list {
-    flex: 1;
-    overflow-y: auto;
-    border-top: 1px solid #e0e0e0;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .file-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .file-item {
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-bottom: 1px solid #f0f0f0;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  .file-item:hover {
-    background: #e8e9ea;
-  }
-
-  .file-item.selected {
-    background: #667eea;
-    color: white;
-  }
-
-  .file-icon {
-    font-size: 1rem;
-    min-width: 20px;
-  }
-
-  .file-name {
-    color: #333;
-    font-size: 0.85rem;
-    word-break: break-word;
-  }
-
-  .file-item.selected .file-name {
-    color: white;
-  }
-
-  .file-item.not-in-database .file-name {
-    color: #dc3545 !important;
-    font-weight: 600;
-  }
-
-  .file-item.selected.not-in-database .file-name {
-    color: white !important;
-  }
-
-  .empty-state-sidebar {
-    padding: 1rem;
-    text-align: center;
-    color: #999;
-    font-size: 0.95rem;
-  }
-
-  .empty-state {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
-    color: #999;
-  }
-
-  .form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #555;
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-
-  .form-group input,
-  .form-group textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    box-sizing: border-box;
-  }
-
-  .form-group input:focus,
-  .form-group textarea:focus {
-    outline: none;
-    border-color: #667eea;
-  }
-
-  .btn-save {
-    padding: 0.75rem 1.5rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: background 0.2s ease;
-  }
-
-  .btn-save:hover {
-    background: #5568d3;
-  }
-
-  .save-message {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: #d4edda;
-    color: #155724;
-    border-radius: 4px;
-    font-size: 0.9rem;
   }
 </style>
