@@ -75,7 +75,8 @@
             :value="mainGirl"
             @input="handleMainGirlInput"
             @focus="showMainGirlSuggestions = true"
-            @blur="hideMainGirlSuggestions"
+            @paste="handleMainGirlPaste"
+            @blur="onMainGirlBlur"
             type="text"
             placeholder="Main girl name (comma-separated)"
           />
@@ -311,6 +312,64 @@
   function handleMainGirlInput(e: Event) {
     $emit('update:mainGirl', (e.target as HTMLInputElement).value)
     showMainGirlSuggestions.value = true
+  }
+
+  // Helpers for formatting and speeding up multi-tag pastes
+  function capitalizeFirst(s: string): string {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+  }
+
+  function capitalizeLastToken(text: string): string {
+    const parts = text.split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return ''
+    const lastIdx = parts.length - 1
+    parts[lastIdx] = capitalizeFirst(parts[lastIdx])
+    return parts.join(' ')
+  }
+
+  function toTokens(raw: string): string[] {
+    // Split on commas, semicolons, or newlines; trim each; remove empties
+    return raw
+      .split(/[\n;,]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+  }
+
+  function normalizeMainGirls(raw: string): string {
+    const tokens = toTokens(raw).map((t) => capitalizeLastToken(t))
+    // Ensure standard comma+space separation
+    return tokens.join(', ')
+  }
+
+  function mergeMainGirls(existing: string, incoming: string): string {
+    const existingTokens = existing
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t)
+    const incomingTokens = toTokens(incoming).map((t) => capitalizeLastToken(t))
+    const set = new Set<string>(existingTokens)
+    incomingTokens.forEach((t) => set.add(t))
+    return Array.from(set).join(', ')
+  }
+
+  function handleMainGirlPaste(e: ClipboardEvent) {
+    e.preventDefault()
+    const text = e.clipboardData?.getData('text') ?? ''
+    // Merge pasted tags with any existing ones, normalizing capitalization
+    const merged = mergeMainGirls(props.mainGirl || '', text)
+    $emit('update:mainGirl', merged)
+    showMainGirlSuggestions.value = true
+  }
+
+  function formatMainGirlOnBlur(e: FocusEvent) {
+    const val = (e.target as HTMLInputElement).value || ''
+    const normalized = normalizeMainGirls(val)
+    $emit('update:mainGirl', normalized)
+  }
+
+  function onMainGirlBlur(e: FocusEvent) {
+    formatMainGirlOnBlur(e)
+    hideMainGirlSuggestions()
   }
 
   function hideMainGirlSuggestions() {

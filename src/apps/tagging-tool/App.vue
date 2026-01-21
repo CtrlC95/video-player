@@ -114,7 +114,12 @@
   const uniqueMainGirls = computed(() => {
     const girlSet = new Set<string>()
     videosInDatabase.value.forEach((video) => {
-      if (video.mainGirl) girlSet.add(video.mainGirl)
+      if (video.mainGirl) {
+        video.mainGirl.split(',').forEach((girl) => {
+          const trimmed = girl.trim()
+          if (trimmed) girlSet.add(trimmed)
+        })
+      }
     })
     return Array.from(girlSet).sort()
   })
@@ -122,7 +127,12 @@
   const uniqueThemes = computed(() => {
     const themeSet = new Set<string>()
     videosInDatabase.value.forEach((video) => {
-      if (video.theme) themeSet.add(video.theme)
+      if (video.theme) {
+        video.theme.split(',').forEach((theme) => {
+          const trimmed = theme.trim()
+          if (trimmed) themeSet.add(trimmed)
+        })
+      }
     })
     return Array.from(themeSet).sort()
   })
@@ -296,10 +306,6 @@
   async function saveTags() {
     if (!selectedFile.value) return
 
-    const currentIndex = filteredFiles.value.findIndex((f) => f.name === selectedFile.value?.name)
-    const nextFile =
-      currentIndex < filteredFiles.value.length - 1 ? filteredFiles.value[currentIndex + 1] : null
-
     const videoData: VideoMetadata = {
       fileName: selectedFile.value.name,
       creator: creator.value,
@@ -317,10 +323,6 @@
       await videoDataService.addOrUpdateVideo(videoData)
       videosInDatabase.value = await videoDataService.loadVideos()
       saveMessage.value = 'Saved to videos.json!'
-
-      if (nextFile) {
-        selectFile(nextFile)
-      }
     } else {
       console.log('Video data:', videoData)
       saveMessage.value = 'Saved! (Check console)'
