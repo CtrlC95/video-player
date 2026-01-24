@@ -15,6 +15,12 @@ dist-ssr
 # Local data files
 local-data/
 
+# Edit-tool scratch notes
+src/apps/edit-tool/notes/
+
+# General app notes
+src/apps/notes/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
