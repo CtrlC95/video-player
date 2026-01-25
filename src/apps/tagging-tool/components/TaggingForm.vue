@@ -74,7 +74,7 @@
           <input
             :value="mainGirl"
             @input="handleMainGirlInput"
-            @focus="showMainGirlSuggestions = true"
+            @focus="handleMainGirlFocus"
             @paste="handleMainGirlPaste"
             @blur="onMainGirlBlur"
             type="text"
@@ -102,7 +102,7 @@
           <input
             :value="theme"
             @input="handleThemeInput"
-            @focus="showThemeSuggestions = true"
+            @focus="handleThemeFocus"
             @blur="hideThemeSuggestions"
             type="text"
             placeholder="Theme (comma-separated)"
@@ -314,6 +314,22 @@
   function handleMainGirlInput(e: Event) {
     $emit('update:mainGirl', (e.target as HTMLInputElement).value)
     showMainGirlSuggestions.value = true
+  }
+
+  function handleMainGirlFocus(e: FocusEvent) {
+    const input = e.target as HTMLInputElement
+    showMainGirlSuggestions.value = true
+    setTimeout(() => {
+      input.setSelectionRange(input.value.length, input.value.length)
+    }, 0)
+  }
+
+  function handleThemeFocus(e: FocusEvent) {
+    const input = e.target as HTMLInputElement
+    showThemeSuggestions.value = true
+    setTimeout(() => {
+      input.setSelectionRange(input.value.length, input.value.length)
+    }, 0)
   }
 
   // Helpers for formatting and speeding up multi-tag pastes

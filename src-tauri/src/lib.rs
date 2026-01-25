@@ -10,7 +10,15 @@ const EXCLUDED_TAGS: &[&str] = &[
   "Doggystyle",
   "Cowgirl",
   "Facial",
-  "Big dick"
+  "Big dick",
+  "Ass shake",
+  "Balls deep",
+  "bbc",
+  "Big black cock",
+  "Big white cock",
+  "Black dick",
+  "Cum in mouth",
+  "Bouncing tits"
 ];
 
 #[derive(Serialize)]
