@@ -124,6 +124,7 @@
       </div>
 
       <button class="btn-save" @click="$emit('save')">Save</button>
+      <button class="btn-secondary" @click="getTags">Get tags</button>
 
       <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
     </div>
@@ -134,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+  import { invoke } from '@tauri-apps/api/core'
   import { ref, computed } from 'vue'
   import type { FileItem } from '../../../shared/composables/useFileBrowser'
   import type { VideoMetadata } from '../../../shared/types/media'
@@ -398,6 +400,39 @@
     showThemeSuggestions.value = true
   }
 
+  async function getTags() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for tag fetch')
+      return
+    }
+
+    try {
+      const result = await invoke<{
+        url: string
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newCreator = result.creator[0] || ''
+      const newSongName = result.music_song[0] || ''
+      const newArtist = result.music_artist.join(', ')
+      const newMainGirl = result.models.map((m) => capitalizeLastToken(m)).join(', ')
+      const newTheme = result.tags.join(', ')
+
+      $emit('update:creator', props.creator || newCreator)
+      $emit('update:songName', props.songName || newSongName)
+      $emit('update:artist', props.artist || newArtist)
+      $emit('update:mainGirl', props.mainGirl ? `${props.mainGirl}, ${newMainGirl}` : newMainGirl)
+      $emit('update:theme', props.theme ? `${props.theme}, ${newTheme}` : newTheme)
+    } catch (err) {
+      console.error('Failed to fetch tags', err)
+    }
+  }
+
   function hideThemeSuggestions() {
     setTimeout(() => {
       showThemeSuggestions.value = false
@@ -512,6 +547,7 @@
   }
 
   .btn-save {
+    width: 100%;
     padding: 0.75rem 1.5rem;
     background: #667eea;
     color: white;
@@ -521,6 +557,24 @@
     font-size: 0.95rem;
     font-weight: 600;
     transition: background 0.2s ease;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    background: #d0d0d0;
   }
 
   .btn-save:hover {

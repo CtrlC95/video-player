@@ -5,10 +5,10 @@ export interface VideoMetadata {
   artist: string
   webAddress: string
   weightScore: number
-  mainGirl: string
+  mainGirl: string[] | string
   delete: string
   edit: string
-  theme: string
+  theme: string[] | string
 }
 
 export interface SongMetadata {

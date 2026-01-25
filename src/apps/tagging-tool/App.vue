@@ -115,10 +115,17 @@
     const girlSet = new Set<string>()
     videosInDatabase.value.forEach((video) => {
       if (video.mainGirl) {
-        video.mainGirl.split(',').forEach((girl) => {
-          const trimmed = girl.trim()
-          if (trimmed) girlSet.add(trimmed)
-        })
+        if (Array.isArray(video.mainGirl)) {
+          video.mainGirl.forEach((girl) => {
+            const trimmed = girl.trim()
+            if (trimmed) girlSet.add(trimmed)
+          })
+        } else if (typeof video.mainGirl === 'string') {
+          video.mainGirl.split(',').forEach((girl) => {
+            const trimmed = girl.trim()
+            if (trimmed) girlSet.add(trimmed)
+          })
+        }
       }
     })
     return Array.from(girlSet).sort()
@@ -128,10 +135,17 @@
     const themeSet = new Set<string>()
     videosInDatabase.value.forEach((video) => {
       if (video.theme) {
-        video.theme.split(',').forEach((theme) => {
-          const trimmed = theme.trim()
-          if (trimmed) themeSet.add(trimmed)
-        })
+        if (Array.isArray(video.theme)) {
+          video.theme.forEach((theme) => {
+            const trimmed = theme.trim()
+            if (trimmed) themeSet.add(trimmed)
+          })
+        } else if (typeof video.theme === 'string') {
+          video.theme.split(',').forEach((theme) => {
+            const trimmed = theme.trim()
+            if (trimmed) themeSet.add(trimmed)
+          })
+        }
       }
     })
     return Array.from(themeSet).sort()
@@ -201,9 +215,12 @@
 
           if (!hasActiveFilter) return false
 
-          const checkField = (field: string, fieldValue: string | undefined): boolean => {
+          const checkField = (
+            field: string,
+            fieldValue: string | string[] | undefined
+          ): boolean => {
             const filter = fieldFilters.value[field]
-            const isEmpty = !fieldValue
+            const isEmpty = !fieldValue || (Array.isArray(fieldValue) && fieldValue.length === 0)
 
             if (!filter.missing && !filter.exists) return false
 
@@ -263,8 +280,12 @@
         songName.value = existingData.songName
         artist.value = existingData.artist
         webAddress.value = existingData.webAddress
-        mainGirl.value = existingData.mainGirl || ''
-        theme.value = existingData.theme || ''
+        mainGirl.value = Array.isArray(existingData.mainGirl)
+          ? existingData.mainGirl.join(', ')
+          : existingData.mainGirl || ''
+        theme.value = Array.isArray(existingData.theme)
+          ? existingData.theme.join(', ')
+          : existingData.theme || ''
       } else {
         parseFilename(file.name)
       }
@@ -306,18 +327,35 @@
   async function saveTags() {
     if (!selectedFile.value) return
 
+    const mainGirlArray = mainGirl.value
+      .split(',')
+      .map((g) => g.trim())
+      .filter((g) => g)
+
+    const themeArray = theme.value
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t)
+
+    const uniqueSortedMainGirl = Array.from(new Set(mainGirlArray)).sort()
+    const uniqueSortedTheme = Array.from(new Set(themeArray)).sort()
+
     const videoData: VideoMetadata = {
       fileName: selectedFile.value.name,
       creator: creator.value,
       songName: songName.value,
       artist: artist.value,
       webAddress: webAddress.value,
-      mainGirl: mainGirl.value,
-      theme: theme.value,
+      mainGirl: uniqueSortedMainGirl,
+      theme: uniqueSortedTheme,
       weightScore: 1,
       delete: 'no',
       edit: 'no',
     }
+
+    // Update form fields with cleaned values
+    mainGirl.value = uniqueSortedMainGirl.join(', ')
+    theme.value = uniqueSortedTheme.join(', ')
 
     if (isInitialized.value) {
       await videoDataService.addOrUpdateVideo(videoData)
