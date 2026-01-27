@@ -171,28 +171,65 @@
   const filteredFiles = computed(() => {
     let result: any[] = []
 
-    // Show all database entries
+    // Show all database entries with search and missing field filters combined
     if (filterBy.value === 'all') {
       result = videosInDatabase.value
         .filter((video) => {
+          // Apply search filters
+          let searchMatches = true
           if (searchField.value === 'creator') {
-            if (!creatorSearch.value) return true
-            return video.creator.toLowerCase().includes(creatorSearch.value.toLowerCase())
+            if (creatorSearch.value) {
+              searchMatches = video.creator.toLowerCase().includes(creatorSearch.value.toLowerCase())
+            }
           } else if (searchField.value === 'song') {
             const hasSongTerm = songSearch.value.length > 0
             const hasArtistTerm = artistSearch.value.length > 0
 
-            if (!hasSongTerm && !hasArtistTerm) return true
-
-            const songMatch =
-              !hasSongTerm || video.songName.toLowerCase().includes(songSearch.value.toLowerCase())
-            const artistMatch =
-              !hasArtistTerm ||
-              video.artist.toLowerCase().includes(artistSearch.value.toLowerCase())
-
-            return songMatch && artistMatch
+            if (hasSongTerm || hasArtistTerm) {
+              const songMatch =
+                !hasSongTerm || video.songName.toLowerCase().includes(songSearch.value.toLowerCase())
+              const artistMatch =
+                !hasArtistTerm ||
+                video.artist.toLowerCase().includes(artistSearch.value.toLowerCase())
+              searchMatches = songMatch && artistMatch
+            }
           }
-          return true
+
+          // Apply missing field filters
+          const hasActiveFilter = Object.values(fieldFilters.value).some(
+            (f) => f.missing || f.exists
+          )
+
+          let fieldFilterMatches = true
+          if (hasActiveFilter) {
+            const checkField = (
+              field: string,
+              fieldValue: string | string[] | undefined
+            ): boolean => {
+              const filter = fieldFilters.value[field]
+              const isEmpty = !fieldValue || (Array.isArray(fieldValue) && fieldValue.length === 0)
+
+              if (!filter.missing && !filter.exists) return false
+
+              if (filter.missing && filter.exists) return true
+
+              if (filter.missing) return isEmpty
+
+              if (filter.exists) return !isEmpty
+
+              return false
+            }
+
+            fieldFilterMatches =
+              checkField('creator', video.creator) ||
+              checkField('songName', video.songName) ||
+              checkField('artist', video.artist) ||
+              checkField('webAddress', video.webAddress) ||
+              checkField('mainGirl', video.mainGirl) ||
+              checkField('theme', video.theme)
+          }
+
+          return searchMatches && fieldFilterMatches
         })
         .map((video) => ({
           name: video.fileName,
@@ -204,50 +241,6 @@
     // Show untagged videos (not in database)
     else if (filterBy.value === 'untagged') {
       result = files.value.filter((file) => !isFileInDatabase(file.name))
-    }
-    // Show database entries with missing specific fields
-    else if (filterBy.value === 'missing') {
-      result = videosInDatabase.value
-        .filter((video) => {
-          const hasActiveFilter = Object.values(fieldFilters.value).some(
-            (f) => f.missing || f.exists
-          )
-
-          if (!hasActiveFilter) return false
-
-          const checkField = (
-            field: string,
-            fieldValue: string | string[] | undefined
-          ): boolean => {
-            const filter = fieldFilters.value[field]
-            const isEmpty = !fieldValue || (Array.isArray(fieldValue) && fieldValue.length === 0)
-
-            if (!filter.missing && !filter.exists) return false
-
-            if (filter.missing && filter.exists) return true
-
-            if (filter.missing) return isEmpty
-
-            if (filter.exists) return !isEmpty
-
-            return false
-          }
-
-          return (
-            checkField('creator', video.creator) ||
-            checkField('songName', video.songName) ||
-            checkField('artist', video.artist) ||
-            checkField('webAddress', video.webAddress) ||
-            checkField('mainGirl', video.mainGirl) ||
-            checkField('theme', video.theme)
-          )
-        })
-        .map((video) => ({
-          name: video.fileName,
-          isDirectory: false,
-          fullPath: video.fileName,
-          handle: null,
-        }))
     }
 
     return result

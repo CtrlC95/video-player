@@ -12,7 +12,6 @@
       >
         <option value="all">All Videos</option>
         <option value="untagged">Untagged Videos</option>
-        <option value="missing">Missing Data</option>
       </select>
 
       <div v-if="localFilterBy === 'all'" class="search-box">
@@ -65,141 +64,143 @@
             <option v-for="artist in props.uniqueArtists" :key="artist" :value="artist" />
           </datalist>
         </div>
+
+        <div class="filter-options">
+          <div class="missing-toggles">
+            <div class="filter-field">
+              <span class="field-name">Creator</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.creator.missing"
+                    @change="toggleFieldFilter('creator', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.creator.exists"
+                    @change="toggleFieldFilter('creator', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-field">
+              <span class="field-name">Song Name</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.songName.missing"
+                    @change="toggleFieldFilter('songName', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.songName.exists"
+                    @change="toggleFieldFilter('songName', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-field">
+              <span class="field-name">Artist</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.artist.missing"
+                    @change="toggleFieldFilter('artist', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.artist.exists"
+                    @change="toggleFieldFilter('artist', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-field">
+              <span class="field-name">Web Address</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.webAddress.missing"
+                    @change="toggleFieldFilter('webAddress', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.webAddress.exists"
+                    @change="toggleFieldFilter('webAddress', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-field">
+              <span class="field-name">Main Girl</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.mainGirl.missing"
+                    @change="toggleFieldFilter('mainGirl', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.mainGirl.exists"
+                    @change="toggleFieldFilter('mainGirl', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+
+            <div class="filter-field">
+              <span class="field-name">Theme</span>
+              <div class="checkbox-pair">
+                <label class="checkbox-label" title="Missing">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.theme.missing"
+                    @change="toggleFieldFilter('theme', 'missing')"
+                  />
+                  M
+                </label>
+                <label class="checkbox-label" title="Exists">
+                  <input
+                    type="checkbox"
+                    :checked="fieldFilters.theme.exists"
+                    @change="toggleFieldFilter('theme', 'exists')"
+                  />
+                  E
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div v-if="localFilterBy === 'missing'" class="filter-options">
-        <div class="missing-toggles">
-          <div class="filter-field">
-            <span class="field-name">Creator</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.creator.missing"
-                  @change="toggleFieldFilter('creator', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.creator.exists"
-                  @change="toggleFieldFilter('creator', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <span class="field-name">Song Name</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.songName.missing"
-                  @change="toggleFieldFilter('songName', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.songName.exists"
-                  @change="toggleFieldFilter('songName', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <span class="field-name">Artist</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.artist.missing"
-                  @change="toggleFieldFilter('artist', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.artist.exists"
-                  @change="toggleFieldFilter('artist', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <span class="field-name">Web Address</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.webAddress.missing"
-                  @change="toggleFieldFilter('webAddress', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.webAddress.exists"
-                  @change="toggleFieldFilter('webAddress', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <span class="field-name">Main Girl</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.mainGirl.missing"
-                  @change="toggleFieldFilter('mainGirl', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.mainGirl.exists"
-                  @change="toggleFieldFilter('mainGirl', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <span class="field-name">Theme</span>
-            <div class="checkbox-pair">
-              <label class="checkbox-label" title="Missing">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.theme.missing"
-                  @change="toggleFieldFilter('theme', 'missing')"
-                />
-                M
-              </label>
-              <label class="checkbox-label" title="Exists">
-                <input
-                  type="checkbox"
-                  :checked="fieldFilters.theme.exists"
-                  @change="toggleFieldFilter('theme', 'exists')"
-                />
-                E
-              </label>
-            </div>
-          </div>
         </div>
       </div>
 
