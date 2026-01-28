@@ -15,56 +15,6 @@
       </select>
 
       <div v-if="localFilterBy === 'all'" class="search-box">
-        <div class="search-field-radios">
-          <label class="radio-label">
-            <input type="radio" v-model="searchField" value="creator" @change="emitSearchChange" />
-            Creator
-          </label>
-          <label class="radio-label">
-            <input type="radio" v-model="searchField" value="song" @change="emitSearchChange" />
-            Song
-          </label>
-        </div>
-
-        <div v-if="searchField === 'creator'" class="search-inputs">
-          <input
-            v-model="creatorSearch"
-            type="text"
-            placeholder="Search creator..."
-            class="search-input"
-            list="creator-suggestions"
-            @input="emitSearchChange"
-          />
-          <datalist id="creator-suggestions">
-            <option v-for="creator in props.uniqueCreators" :key="creator" :value="creator" />
-          </datalist>
-        </div>
-
-        <div v-if="searchField === 'song'" class="search-inputs">
-          <input
-            v-model="songSearch"
-            type="text"
-            placeholder="Search song title..."
-            class="search-input"
-            list="song-suggestions"
-            @input="emitSearchChange"
-          />
-          <datalist id="song-suggestions">
-            <option v-for="song in props.uniqueSongs" :key="song" :value="song" />
-          </datalist>
-          <input
-            v-model="artistSearch"
-            type="text"
-            placeholder="Search artist..."
-            class="search-input"
-            list="artist-suggestions"
-            @input="emitSearchChange"
-          />
-          <datalist id="artist-suggestions">
-            <option v-for="artist in props.uniqueArtists" :key="artist" :value="artist" />
-          </datalist>
-        </div>
-
         <div class="filter-options">
           <div class="missing-toggles">
             <div class="filter-field">
@@ -200,7 +150,55 @@
             </div>
           </div>
         </div>
-      </div>
+
+        <div class="search-field-radios">
+          <label class="radio-label">
+            <input type="radio" v-model="searchField" value="creator" @change="emitSearchChange" />
+            Creator
+          </label>
+          <label class="radio-label">
+            <input type="radio" v-model="searchField" value="song" @change="emitSearchChange" />
+            Song
+          </label>
+        </div>
+
+        <div v-if="searchField === 'creator'" class="search-inputs">
+          <input
+            v-model="creatorSearch"
+            type="text"
+            placeholder="Search creator..."
+            class="search-input"
+            list="creator-suggestions"
+            @input="emitSearchChange"
+          />
+          <datalist id="creator-suggestions">
+            <option v-for="creator in props.uniqueCreators" :key="creator" :value="creator" />
+          </datalist>
+        </div>
+
+        <div v-if="searchField === 'song'" class="search-inputs">
+          <input
+            v-model="songSearch"
+            type="text"
+            placeholder="Search song title..."
+            class="search-input"
+            list="song-suggestions"
+            @input="emitSearchChange"
+          />
+          <datalist id="song-suggestions">
+            <option v-for="song in props.uniqueSongs" :key="song" :value="song" />
+          </datalist>
+          <input
+            v-model="artistSearch"
+            type="text"
+            placeholder="Search artist..."
+            class="search-input"
+            list="artist-suggestions"
+            @input="emitSearchChange"
+          />
+          <datalist id="artist-suggestions">
+            <option v-for="artist in props.uniqueArtists" :key="artist" :value="artist" />
+          </datalist>
         </div>
       </div>
 

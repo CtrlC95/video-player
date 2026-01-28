@@ -179,7 +179,9 @@
           let searchMatches = true
           if (searchField.value === 'creator') {
             if (creatorSearch.value) {
-              searchMatches = video.creator.toLowerCase().includes(creatorSearch.value.toLowerCase())
+              searchMatches = video.creator
+                .toLowerCase()
+                .includes(creatorSearch.value.toLowerCase())
             }
           } else if (searchField.value === 'song') {
             const hasSongTerm = songSearch.value.length > 0
@@ -187,7 +189,8 @@
 
             if (hasSongTerm || hasArtistTerm) {
               const songMatch =
-                !hasSongTerm || video.songName.toLowerCase().includes(songSearch.value.toLowerCase())
+                !hasSongTerm ||
+                video.songName.toLowerCase().includes(songSearch.value.toLowerCase())
               const artistMatch =
                 !hasArtistTerm ||
                 video.artist.toLowerCase().includes(artistSearch.value.toLowerCase())
@@ -209,7 +212,7 @@
               const filter = fieldFilters.value[field]
               const isEmpty = !fieldValue || (Array.isArray(fieldValue) && fieldValue.length === 0)
 
-              if (!filter.missing && !filter.exists) return false
+              if (!filter.missing && !filter.exists) return true
 
               if (filter.missing && filter.exists) return true
 
@@ -221,11 +224,11 @@
             }
 
             fieldFilterMatches =
-              checkField('creator', video.creator) ||
-              checkField('songName', video.songName) ||
-              checkField('artist', video.artist) ||
-              checkField('webAddress', video.webAddress) ||
-              checkField('mainGirl', video.mainGirl) ||
+              checkField('creator', video.creator) &&
+              checkField('songName', video.songName) &&
+              checkField('artist', video.artist) &&
+              checkField('webAddress', video.webAddress) &&
+              checkField('mainGirl', video.mainGirl) &&
               checkField('theme', video.theme)
           }
 
