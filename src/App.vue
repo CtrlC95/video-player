@@ -1,7 +1,19 @@
 <template>
-  <div id="app">
-    <header class="app-header">
+  <div id="app" :class="{ 'is-fullscreen': isFullscreen, 'nav-visible': navHoverActive }">
+    <div
+      class="nav-hover-zone"
+      @mouseenter="navHoverActive = true"
+      @mouseleave="navHoverActive = false"
+    ></div>
+    <header
+      class="app-header"
+      @mouseenter="navHoverActive = true"
+      @mouseleave="navHoverActive = false"
+    >
       <nav class="app-nav">
+        <button class="nav-button nav-fullscreen" @click="toggleFullscreen">
+          {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
+        </button>
         <button
           class="nav-button nav-left"
           :class="{ active: selectedApp === 'tagging-tool' }"
@@ -35,12 +47,39 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { ref, onMounted, onBeforeUnmount } from 'vue'
   import VideoPlayerApp from './apps/video-player/App.vue'
   import TaggingToolApp from './apps/tagging-tool/App.vue'
   import EditToolApp from './apps/edit-tool/App.vue'
 
   const selectedApp = ref<'video-player' | 'tagging-tool' | 'edit-tool'>('tagging-tool')
+  const isFullscreen = ref(false)
+  const navHoverActive = ref(false)
+
+  function handleFullscreenChange() {
+    isFullscreen.value = Boolean(document.fullscreenElement)
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen()
+      } else {
+        await document.exitFullscreen()
+      }
+    } catch (err) {
+      console.error('Failed to toggle fullscreen', err)
+    }
+  }
+
+  onMounted(() => {
+    isFullscreen.value = Boolean(document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+  })
+
+  onBeforeUnmount(() => {
+    document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  })
 </script>
 
 <style scoped>
@@ -66,10 +105,25 @@
     top: 0;
     left: 0;
     z-index: 100;
+    pointer-events: none;
   }
 
-  .app-header:hover {
+  .nav-visible .app-header {
     opacity: 1;
+    pointer-events: auto;
+  }
+
+  .nav-hover-zone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 25px;
+    z-index: 101;
+  }
+
+  .nav-visible .nav-hover-zone {
+    pointer-events: none;
   }
 
   .app-nav {
@@ -106,6 +160,11 @@
     text-align: center;
   }
 
+  .nav-button.nav-fullscreen {
+    padding: 0.5rem 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
   .nav-button:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
@@ -122,5 +181,10 @@
     overflow-y: auto;
     width: 100%;
     height: 100%;
+  }
+
+  .is-fullscreen .app-container {
+    height: 100vh;
+    overflow: hidden;
   }
 </style>

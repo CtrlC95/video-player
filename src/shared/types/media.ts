@@ -8,6 +8,9 @@ export interface VideoMetadata {
   mainGirl: string[] | string
   delete: string
   edit: string
+  updateForm: string
+  updateFormGirls?: string
+  updateFormThemes?: string
   theme: string[] | string
 }
 

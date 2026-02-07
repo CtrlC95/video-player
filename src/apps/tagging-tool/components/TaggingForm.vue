@@ -3,6 +3,12 @@
     <div class="tagging-panel" v-if="selectedFile">
       <h2 class="video-title">{{ selectedFile.name }}</h2>
 
+      <div v-if="fileMetadata" class="file-info">
+        <p :class="{ 'date-old': isDateOld, 'date-recent': isDateRecent }">
+          <strong>Created:</strong> {{ fileMetadata.created }}
+        </p>
+      </div>
+
       <div class="form-group">
         <label>Creator</label>
         <input
@@ -37,8 +43,6 @@
           <input
             :value="artist"
             @input="handleArtistInput"
-            @focus="showArtistSuggestions = true"
-            @blur="hideArtistSuggestions"
             type="text"
             placeholder="Artist name (comma-separated)"
           />
@@ -74,9 +78,7 @@
           <input
             :value="mainGirl"
             @input="handleMainGirlInput"
-            @focus="handleMainGirlFocus"
             @paste="handleMainGirlPaste"
-            @blur="onMainGirlBlur"
             type="text"
             placeholder="Main girl name (comma-separated)"
           />
@@ -102,8 +104,6 @@
           <input
             :value="theme"
             @input="handleThemeInput"
-            @focus="handleThemeFocus"
-            @blur="hideThemeSuggestions"
             type="text"
             placeholder="Theme (comma-separated)"
           />
@@ -124,9 +124,12 @@
       </div>
 
       <button class="btn-save" @click="$emit('save')">Save</button>
-      <button class="btn-secondary" @click="getTags">Get tags</button>
+      <button class="btn-secondary" @click="getTags" :disabled="isLoadingTags">
+        {{ isLoadingTags ? 'Loading...' : 'Get tags' }}
+      </button>
 
       <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
+      <div v-if="isLoadingTags" class="loading-message">Fetching tags from website...</div>
     </div>
     <div v-else class="empty-state-panel">
       <p>Select a video to tag</p>
@@ -136,12 +139,16 @@
 
 <script setup lang="ts">
   import { invoke } from '@tauri-apps/api/core'
-  import { ref, computed } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import type { FileItem } from '../../../shared/composables/useFileBrowser'
+
+  const isLoadingTags = ref(false)
+  const fileMetadata = ref<{ created: string } | null>(null)
   import type { VideoMetadata } from '../../../shared/types/media'
 
   interface Props {
     selectedFile: FileItem | null
+    directoryHandle: any
     creator: string
     songName: string
     artist: string
@@ -157,9 +164,22 @@
 
   const props = defineProps<Props>()
 
-  const showArtistSuggestions = ref(false)
-  const showMainGirlSuggestions = ref(false)
   const showThemeSuggestions = ref(false)
+
+  const isDateOld = computed(() => {
+    if (!fileMetadata.value) return false
+    const cutoffDate = new Date('2024-10-17')
+    const fileDate = new Date(fileMetadata.value.created)
+    return fileDate <= cutoffDate
+  })
+
+  const isDateRecent = computed(() => {
+    if (!fileMetadata.value) return false
+    const startDate = new Date('2024-10-17')
+    const endDate = new Date('2024-11-26')
+    const fileDate = new Date(fileMetadata.value.created)
+    return fileDate > startDate && fileDate <= endDate
+  })
 
   const allArtistNames = computed(() => {
     const artistSet = new Set<string>()
@@ -290,12 +310,6 @@
     showArtistSuggestions.value = true
   }
 
-  function hideArtistSuggestions() {
-    setTimeout(() => {
-      showArtistSuggestions.value = false
-    }, 200)
-  }
-
   function selectArtistSuggestion(suggestion: string) {
     const currentValue = props.artist
     const lastCommaIndex = currentValue.lastIndexOf(',')
@@ -314,22 +328,6 @@
   function handleMainGirlInput(e: Event) {
     $emit('update:mainGirl', (e.target as HTMLInputElement).value)
     showMainGirlSuggestions.value = true
-  }
-
-  function handleMainGirlFocus(e: FocusEvent) {
-    const input = e.target as HTMLInputElement
-    showMainGirlSuggestions.value = true
-    setTimeout(() => {
-      input.setSelectionRange(input.value.length, input.value.length)
-    }, 0)
-  }
-
-  function handleThemeFocus(e: FocusEvent) {
-    const input = e.target as HTMLInputElement
-    showThemeSuggestions.value = true
-    setTimeout(() => {
-      input.setSelectionRange(input.value.length, input.value.length)
-    }, 0)
   }
 
   // Helpers for formatting and speeding up multi-tag pastes
@@ -379,23 +377,6 @@
     showMainGirlSuggestions.value = true
   }
 
-  function formatMainGirlOnBlur(e: FocusEvent) {
-    const val = (e.target as HTMLInputElement).value || ''
-    const normalized = normalizeMainGirls(val)
-    $emit('update:mainGirl', normalized)
-  }
-
-  function onMainGirlBlur(e: FocusEvent) {
-    formatMainGirlOnBlur(e)
-    hideMainGirlSuggestions()
-  }
-
-  function hideMainGirlSuggestions() {
-    setTimeout(() => {
-      showMainGirlSuggestions.value = false
-    }, 200)
-  }
-
   function selectMainGirlSuggestion(suggestion: string) {
     const currentValue = props.mainGirl
     const lastCommaIndex = currentValue.lastIndexOf(',')
@@ -416,6 +397,31 @@
     showThemeSuggestions.value = true
   }
 
+  // Load file metadata when video is selected
+  watch(
+    () => props.selectedFile,
+    async (newFile) => {
+      if (newFile && props.directoryHandle) {
+        try {
+          // Get the file handle
+          const fileHandle = await props.directoryHandle.getFileHandle(newFile.name)
+
+          // Get the file object
+          const file = await fileHandle.getFile()
+
+          // Get the modified date from the File object (this is built-in)
+          const modifiedDate = new Date(file.lastModified)
+          const created = modifiedDate.toISOString().replace('T', ' ').substring(0, 19)
+
+          fileMetadata.value = { created }
+        } catch (err) {
+          console.error('Failed to load file metadata:', err)
+          fileMetadata.value = null
+        }
+      }
+    }
+  )
+
   async function getTags() {
     const url = props.webAddress?.trim()
     if (!url) {
@@ -423,6 +429,7 @@
       return
     }
 
+    isLoadingTags.value = true
     try {
       const result = await invoke<{
         url: string
@@ -446,13 +453,9 @@
       $emit('update:theme', props.theme ? `${props.theme}, ${newTheme}` : newTheme)
     } catch (err) {
       console.error('Failed to fetch tags', err)
+    } finally {
+      isLoadingTags.value = false
     }
-  }
-
-  function hideThemeSuggestions() {
-    setTimeout(() => {
-      showThemeSuggestions.value = false
-    }, 200)
   }
 
   function selectThemeSuggestion(suggestion: string) {
@@ -484,52 +487,86 @@
 <style scoped>
   .right-sidebar {
     width: 300px;
-    padding-top: 50px;
+    padding-top: 24px;
     flex: 0 0 300px;
-    background: #494949;
-    border-left: 1px solid #e0e0e0;
+    background: rgba(31, 41, 55, 0.92);
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.2);
   }
 
   .tagging-panel {
-    padding: 1.5rem;
+    padding: 1.25rem;
     box-sizing: border-box;
   }
 
   .video-title {
-    margin: 0 0 1.5rem 0;
-    color: #333;
-    font-size: 1.5rem;
+    margin: 0 0 1.25rem 0;
+    color: #f9fafb;
+    font-size: 1.2rem;
     word-break: break-word;
   }
 
+  .file-info {
+    margin-bottom: 1.25rem;
+    padding: 0.75rem;
+    background: rgba(17, 24, 39, 0.6);
+    border-left: 3px solid #667eea;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.9rem;
+  }
+
+  .file-info p {
+    margin: 0.25rem 0;
+    color: #e5e7eb;
+  }
+
+  .file-info p.date-old {
+    color: #d32f2f;
+    font-weight: 600;
+  }
+
+  .file-info p.date-recent {
+    color: #f57f17;
+    font-weight: 600;
+  }
+
   .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.1rem;
   }
 
   .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
-    color: #555;
+    margin-bottom: 0.35rem;
+    color: #cbd5f5;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
-  .form-group input {
+  .form-group input,
+  .form-group select {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 0.95rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f9fafb;
+    font-size: 0.9rem;
     font-family: inherit;
     box-sizing: border-box;
   }
 
-  .form-group input:focus {
-    outline: none;
-    border-color: #667eea;
+  .form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .form-group select option {
+    color: #111827;
   }
 
   .autocomplete-wrapper {
@@ -543,10 +580,10 @@
     right: 0;
     max-height: 200px;
     overflow-y: auto;
-    background: white;
-    border: 1px solid #667eea;
-    border-radius: 4px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: rgba(17, 24, 39, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
     z-index: 1000;
     margin-top: 2px;
   }
@@ -554,19 +591,19 @@
   .autocomplete-item {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
-    color: #333;
+    color: #f9fafb;
     font-size: 0.9rem;
   }
 
   .autocomplete-item:hover {
-    background: #f0f0f0;
+    background: rgba(102, 126, 234, 0.25);
   }
 
   .btn-save {
     width: 100%;
     padding: 0.75rem 1.5rem;
     background: #667eea;
-    color: white;
+    color: #fff;
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -579,18 +616,23 @@
     width: 100%;
     margin-top: 0.75rem;
     padding: 0.75rem 1.5rem;
-    background: #e0e0e0;
-    color: #333;
-    border: none;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #f9fafb;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 600;
     transition: background 0.2s ease;
   }
 
-  .btn-secondary:hover {
-    background: #d0d0d0;
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .btn-save:hover {
@@ -600,16 +642,26 @@
   .save-message {
     margin-top: 1rem;
     padding: 0.75rem;
-    background: #d4edda;
-    color: #155724;
-    border-radius: 4px;
+    background: rgba(34, 197, 94, 0.18);
+    color: #bbf7d0;
+    border-radius: 8px;
     font-size: 0.9rem;
+  }
+
+  .loading-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(96, 165, 250, 0.18);
+    color: #bfdbfe;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-align: center;
   }
 
   .empty-state-panel {
     padding: 2rem 1.5rem;
     text-align: center;
-    color: #999;
+    color: #cbd5f5;
     font-size: 0.95rem;
   }
 </style>

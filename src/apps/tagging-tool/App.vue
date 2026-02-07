@@ -31,6 +31,7 @@
 
     <TaggingForm
       :selected-file="selectedFile"
+      :directory-handle="directoryHandle"
       :creator="creator"
       :song-name="songName"
       :artist="artist"
@@ -59,6 +60,7 @@
   import type { FileItem } from '../../shared/composables/useFileBrowser'
   import { videoDataService } from '../../shared/services/videoDataService'
   import type { VideoMetadata } from '../../shared/types/media'
+  import { selectedVideoName } from '../../shared/state/videoSelection'
   import FileListSidebar from './components/FileListSidebar.vue'
   import VideoPlayer from './components/VideoPlayer.vue'
   import TaggingForm from './components/TaggingForm.vue'
@@ -249,13 +251,27 @@
     return result
   })
 
+  async function initializeFromDirectoryHandle(handle: any) {
+    await videoDataService.initialize(handle)
+    videosInDatabase.value = await videoDataService.loadVideos()
+    isInitialized.value = true
+  }
+
+  watch(
+    directoryHandle,
+    async (newHandle) => {
+      if (newHandle) {
+        await initializeFromDirectoryHandle(newHandle)
+      }
+    },
+    { immediate: true }
+  )
+
   // Directory selection
   async function handleSelectDirectory() {
     await selectDirectory()
     if (directoryHandle.value) {
-      await videoDataService.initialize(directoryHandle.value)
-      videosInDatabase.value = await videoDataService.loadVideos()
-      isInitialized.value = true
+      await initializeFromDirectoryHandle(directoryHandle.value)
     }
   }
 
@@ -268,6 +284,7 @@
   async function selectFile(file: FileItem) {
     selectedFile.value = file
     saveMessage.value = ''
+    selectedVideoName.value = file.name
 
     if (isInitialized.value) {
       const existingData = await videoDataService.getVideoByFileName(file.name)
@@ -289,6 +306,24 @@
       parseFilename(file.name)
     }
   }
+
+  watch(
+    [selectedVideoName, files, directoryHandle],
+    async ([name, fileList, handle]) => {
+      if (!name || !handle) return
+      if (selectedFile.value?.name === name) return
+
+      if (!isInitialized.value) {
+        await initializeFromDirectoryHandle(handle)
+      }
+
+      const match = fileList.find((file) => file.name === name)
+      if (match) {
+        await selectFile(match)
+      }
+    },
+    { immediate: true }
+  )
 
   // Parse filename to auto-fill fields
   function parseFilename(filename: string) {
@@ -336,6 +371,8 @@
     const uniqueSortedMainGirl = Array.from(new Set(mainGirlArray)).sort()
     const uniqueSortedTheme = Array.from(new Set(themeArray)).sort()
 
+    const existingData = await videoDataService.getVideoByFileName(selectedFile.value.name)
+
     const videoData: VideoMetadata = {
       fileName: selectedFile.value.name,
       creator: creator.value,
@@ -345,8 +382,11 @@
       mainGirl: uniqueSortedMainGirl,
       theme: uniqueSortedTheme,
       weightScore: 1,
-      delete: 'no',
-      edit: 'no',
+      delete: existingData?.delete ?? 'no',
+      edit: existingData?.edit ?? 'option1',
+      updateForm: existingData?.updateForm ?? 'option1',
+      updateFormGirls: existingData?.updateFormGirls ?? '',
+      updateFormThemes: existingData?.updateFormThemes ?? '',
     }
 
     // Update form fields with cleaned values
@@ -394,5 +434,7 @@
     height: 100%;
     display: flex;
     flex-direction: row;
+    background: #111827;
+    color: #f9fafb;
   }
 </style>

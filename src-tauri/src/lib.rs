@@ -1,5 +1,7 @@
 use scraper::{Html, Selector};
 use serde::Serialize;
+use std::fs;
+use std::time::SystemTime;
 
 // Tags to exclude from scraping (hardcoded filter list)
 const EXCLUDED_TAGS: &[&str] = &[
@@ -30,6 +32,13 @@ pub struct ScrapeResult {
   pub music_song: Vec<String>,
   pub models: Vec<String>,
 }
+
+#[derive(Serialize)]
+pub struct FileMetadata {
+  pub created: String,
+  pub modified: String,
+}
+
 
 fn clean_text(text: &str) -> String {
   text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -154,10 +163,68 @@ async fn fetch_h3_and_spans(url: String) -> Result<ScrapeResult, String> {
   Ok(ScrapeResult { url, creator, tags, music_artist, music_song, models })
 }
 
+#[tauri::command]
+fn get_file_metadata(file_path: String) -> Result<FileMetadata, String> {
+  // Try the full path first
+  if let Ok(metadata) = fs::metadata(&file_path) {
+    return format_metadata(metadata);
+  }
+
+  // If that fails, try adding common directory prefixes on Windows
+  #[cfg(target_os = "windows")]
+  {
+    // Try to find the file in common locations
+    let home = std::env::var("USERPROFILE").unwrap_or_default();
+    for potential_path in &[
+      format!("{}/{}", home, file_path),
+      format!("{}\\{}", home, file_path),
+    ] {
+      if let Ok(metadata) = fs::metadata(potential_path) {
+        return format_metadata(metadata);
+      }
+    }
+  }
+
+  Err(format!("File not found: {}", file_path))
+}
+
+fn format_metadata(metadata: std::fs::Metadata) -> Result<FileMetadata, String> {
+  let created = metadata
+    .created()
+    .ok()
+    .and_then(|t| {
+      t.duration_since(SystemTime::UNIX_EPOCH)
+        .ok()
+        .map(|d| {
+          let datetime = chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)
+            .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+          datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+        })
+    })
+    .unwrap_or_else(|| "Unknown".to_string());
+
+  let modified = metadata
+    .modified()
+    .ok()
+    .and_then(|t| {
+      t.duration_since(SystemTime::UNIX_EPOCH)
+        .ok()
+        .map(|d| {
+          let datetime = chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)
+            .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+          datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+        })
+    })
+    .unwrap_or_else(|| "Unknown".to_string());
+
+  Ok(FileMetadata { created, modified })
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![fetch_h3_and_spans])
+    .invoke_handler(tauri::generate_handler![fetch_h3_and_spans, get_file_metadata])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

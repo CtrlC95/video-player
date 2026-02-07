@@ -72,7 +72,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: transparent;
+    background: #111827;
   }
 
   .player-wrapper {
@@ -81,27 +81,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 1.25rem;
   }
 
   .video-player {
     width: 100%;
     aspect-ratio: 16 / 9;
-    border: 2px solid #667eea;
-    border-radius: 4px;
-    background: #000;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: #0b0f1a;
   }
 
   .video-placeholder {
     width: 100%;
     aspect-ratio: 16 / 9;
-    border: 2px solid #667eea;
-    border-radius: 4px;
-    background: #000;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: #0b0f1a;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #999;
+    color: #cbd5f5;
   }
 
   .empty-state {
@@ -111,6 +111,6 @@
     justify-content: center;
     padding: 2rem;
     text-align: center;
-    color: #999;
+    color: #cbd5f5;
   }
 </style>
