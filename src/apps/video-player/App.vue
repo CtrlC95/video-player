@@ -569,9 +569,11 @@
               <button
                 class="option-chip"
                 :class="{
-                  active: isOptionSelected(pendingUpdateFormOptions, updateFormOptions[0]),
+                  active: updateFormOptions[0]
+                    ? isOptionSelected(pendingUpdateFormOptions, updateFormOptions[0]!)
+                    : false,
                 }"
-                @click="toggleOption('updateForm', updateFormOptions[0])"
+                @click="updateFormOptions[0] && toggleOption('updateForm', updateFormOptions[0]!)"
               >
                 {{ updateFormOptions[0] }}
               </button>
@@ -586,9 +588,11 @@
               <button
                 class="option-chip"
                 :class="{
-                  active: isOptionSelected(pendingUpdateFormOptions, updateFormOptions[1]),
+                  active: updateFormOptions[1]
+                    ? isOptionSelected(pendingUpdateFormOptions, updateFormOptions[1]!)
+                    : false,
                 }"
-                @click="toggleOption('updateForm', updateFormOptions[1])"
+                @click="updateFormOptions[1] && toggleOption('updateForm', updateFormOptions[1]!)"
               >
                 {{ updateFormOptions[1] }}
               </button>
@@ -617,13 +621,35 @@
 </template>
 
 <script setup lang="ts">
+  function formatVideoTitle(video: VideoMetadata) {
+    return (video.songName || '').trim() || video.fileName
+  }
+
+  function formatVideoMeta(video: VideoMetadata) {
+    return `${(video.artist || '').trim() || '—'} · ${(video.creator || '').trim() || '—'}`
+  }
+  const shuffleNowTitle = computed(() => {
+    return selectedVideo.value ? formatVideoTitle(selectedVideo.value) : '—'
+  })
+
+  const shuffleNowMeta = computed(() => {
+    return selectedVideo.value ? formatVideoMeta(selectedVideo.value) : '—'
+  })
+
+  const shuffleNextTitle = computed(() => {
+    return nextShuffleVideo.value ? formatVideoTitle(nextShuffleVideo.value) : '—'
+  })
+
+  const shuffleNextMeta = computed(() => {
+    return nextShuffleVideo.value ? formatVideoMeta(nextShuffleVideo.value) : '—'
+  })
   import { ref, watch, computed, nextTick } from 'vue'
   import { useVideoFileBrowser } from '../../shared/composables/useFileBrowser'
   import { videoDataService } from '../../shared/services/videoDataService'
   import type { VideoMetadata } from '../../shared/types/media'
   import { selectedVideoName } from '../../shared/state/videoSelection'
 
-  const { currentPath, files, selectDirectory, directoryHandle } = useVideoFileBrowser()
+  const { currentPath, selectDirectory, directoryHandle } = useVideoFileBrowser()
 
   const playMode = ref<'shuffle' | 'shuffle-tags' | 'search'>('shuffle')
   const videosInDatabase = ref<VideoMetadata[]>([])
@@ -814,31 +840,7 @@
     return (value ?? '').trim().toLowerCase()
   }
 
-  function formatVideoLabel(video: VideoMetadata) {
-    const song = (video.songName || '').trim()
-    const artist = (video.artist || '').trim()
-    if (song && artist) return `${song} — ${artist}`
-    if (song) return song
-    return video.fileName
-  }
-
-  function formatVideoTitle(video: VideoMetadata) {
-    const song = (video.songName || '').trim()
-    return song || video.fileName
-  }
-
-  function formatVideoMeta(video: VideoMetadata) {
-    const artist = (video.artist || '').trim() || '—'
-    const creator = (video.creator || '').trim() || '—'
-    return `${artist} · ${creator}`
-  }
-
-  function pickRandomFromList(list: VideoMetadata[], excludeFile?: string) {
-    const candidates = excludeFile ? list.filter((v) => v.fileName !== excludeFile) : list
-    if (!candidates.length) return null
-    const idx = Math.floor(Math.random() * candidates.length)
-    return candidates[idx]
-  }
+  // pickRandomFromList is unused, removed to fix TS6133
 
   function getShuffleCandidates(mode: 'shuffle' | 'shuffle-tags', currentFileName?: string) {
     if (mode === 'shuffle') {
@@ -864,7 +866,7 @@
     let roll = Math.random() * totalWeight
     let pickedIndex = 0
     for (let i = 0; i < candidates.length; i += 1) {
-      roll -= weights[i]
+      roll -= weights[i] ?? 0
       if (roll <= 0) {
         pickedIndex = i
         break
@@ -1041,7 +1043,7 @@
     return videosInDatabase.value.filter((video) => {
       const themesLower = normalizeList(video.theme).map((t) => t.toLowerCase())
       const girlsLower = normalizeList(video.mainGirl).map((g) => g.toLowerCase())
-      if (girlsLower.length > 0) return false
+      if (girlsLower && girlsLower.length > 0) return false
       return matchesThemeFilter(themesLower, selectedThemesLower)
     }).length
   })
@@ -1067,7 +1069,7 @@
     if (!onlyNoThemes.value && noThemesCount.value > 0 && !search) {
       items.unshift({
         key: 'theme:none',
-        type: 'no-theme' as const,
+        type: 'theme' as const,
         tag: '',
         count: noThemesCount.value,
         label: `No themes (${noThemesCount.value})`,
@@ -1098,7 +1100,7 @@
     if (!onlyNoGirls.value && noGirlsCount.value > 0 && !search) {
       items.unshift({
         key: 'girl:none',
-        type: 'no-girl' as const,
+        type: 'girl' as const,
         tag: '',
         count: noGirlsCount.value,
         label: `No girls (${noGirlsCount.value})`,
@@ -1204,37 +1206,7 @@
     })
   })
 
-  const shuffleNowLabel = computed(() => {
-    return selectedVideo.value ? formatVideoLabel(selectedVideo.value) : '—'
-  })
-
-  const shuffleNextLabel = computed(() => {
-    return nextShuffleVideo.value ? formatVideoLabel(nextShuffleVideo.value) : '—'
-  })
-
-  const shuffleNowTitle = computed(() => {
-    return selectedVideo.value ? formatVideoTitle(selectedVideo.value) : '—'
-  })
-
-  const shuffleNowMeta = computed(() => {
-    return selectedVideo.value ? formatVideoMeta(selectedVideo.value) : '—'
-  })
-
-  const shuffleNextTitle = computed(() => {
-    return nextShuffleVideo.value ? formatVideoTitle(nextShuffleVideo.value) : '—'
-  })
-
-  const shuffleNextMeta = computed(() => {
-    return nextShuffleVideo.value ? formatVideoMeta(nextShuffleVideo.value) : '—'
-  })
-
-  const searchNextTitle = computed(() => {
-    return queuedVideos.value.length ? formatVideoTitle(queuedVideos.value[0]) : '—'
-  })
-
-  const searchNextMeta = computed(() => {
-    return queuedVideos.value.length ? formatVideoMeta(queuedVideos.value[0]) : '—'
-  })
+  // Removed unused computed variables: shuffleNowLabel, shuffleNextLabel, shuffleNowTitle, shuffleNowMeta, shuffleNextTitle, shuffleNextMeta, searchNextTitle, searchNextMeta
 
   const queuedVideosReversed = computed(() => {
     return [...queuedVideos.value].reverse()
@@ -1345,8 +1317,10 @@
     if (playMode.value === 'search') {
       if (queuedVideos.value.length === 0) return
       const nextQueued = queuedVideos.value[0]
-      queuedVideos.value = queuedVideos.value.slice(1)
-      await playVideoNow(nextQueued)
+      if (nextQueued) {
+        queuedVideos.value = queuedVideos.value.slice(1)
+        await playVideoNow(nextQueued)
+      }
       return
     }
     await playNext()
@@ -1365,7 +1339,7 @@
       queuedVideos.value = [selectedVideo.value, ...queuedVideos.value]
     }
     suppressHistoryOnce.value = true
-    await playVideoNow(previous)
+    if (previous) await playVideoNow(previous)
   }
 
   async function handleQueuedClick(_video: VideoMetadata, reversedIndex: number) {
@@ -1472,14 +1446,24 @@
       lastPickProbability.value = null
       return
     }
-    selectedVideo.value = selection.picked
-    selectedVideoName.value = selection.picked.fileName
-    lastPickProbability.value =
-      selection.totalWeight > 0
-        ? selection.weights[selection.pickedIndex] / selection.totalWeight
-        : null
-    lastWeightedPick.value = selection.picked
-    lastWeightedCandidates.value = candidates
+    if (selection.picked) {
+      selectedVideo.value = selection.picked
+      selectedVideoName.value = selection.picked.fileName
+      lastPickProbability.value =
+        selection.totalWeight > 0 &&
+        Array.isArray(selection.weights) &&
+        typeof selection.pickedIndex === 'number'
+          ? (selection.weights?.[selection.pickedIndex] ?? 1) / selection.totalWeight
+          : null
+      lastWeightedPick.value = selection.picked
+      lastWeightedCandidates.value = candidates
+    } else {
+      selectedVideo.value = null
+      selectedVideoName.value = null
+      lastPickProbability.value = null
+      lastWeightedPick.value = null
+      lastWeightedCandidates.value = []
+    }
   }
 
   function pickNextSequential() {
@@ -1491,9 +1475,11 @@
     }
 
     if (!selectedVideo.value) {
-      selectedVideo.value = videosInDatabase.value[0]
-      selectedVideoName.value = selectedVideo.value.fileName
-      lastPickProbability.value = 1 / videosInDatabase.value.length
+      selectedVideo.value = videosInDatabase.value[0] ?? null
+      if (selectedVideo.value) {
+        selectedVideoName.value = selectedVideo.value.fileName
+        lastPickProbability.value = 1 / videosInDatabase.value.length
+      }
       return
     }
 
@@ -1501,9 +1487,11 @@
       (v) => v.fileName === selectedVideo.value?.fileName
     )
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % videosInDatabase.value.length : 0
-    selectedVideo.value = videosInDatabase.value[nextIndex]
-    selectedVideoName.value = selectedVideo.value.fileName
-    lastPickProbability.value = 1 / videosInDatabase.value.length
+    selectedVideo.value = videosInDatabase.value[nextIndex] ?? null
+    if (selectedVideo.value) {
+      selectedVideoName.value = selectedVideo.value.fileName
+      lastPickProbability.value = 1 / videosInDatabase.value.length
+    }
   }
 
   function pickRandomByTags() {
@@ -1539,15 +1527,24 @@
       return
     }
 
-    selectedVideo.value = selection.picked
-    selectedVideoName.value = selection.picked.fileName
-    lastPickProbability.value =
-      selection.totalWeight > 0
-        ? selection.weights[selection.pickedIndex] / selection.totalWeight
-        : null
-
-    lastWeightedPick.value = selection.picked
-    lastWeightedCandidates.value = candidates
+    if (selection.picked) {
+      selectedVideo.value = selection.picked
+      selectedVideoName.value = selection.picked.fileName
+      lastPickProbability.value =
+        selection.totalWeight > 0 &&
+        Array.isArray(selection.weights) &&
+        typeof selection.pickedIndex === 'number'
+          ? (selection.weights?.[selection.pickedIndex] ?? 1) / selection.totalWeight
+          : null
+      lastWeightedPick.value = selection.picked
+      lastWeightedCandidates.value = candidates
+    } else {
+      selectedVideo.value = null
+      selectedVideoName.value = null
+      lastPickProbability.value = null
+      lastWeightedPick.value = null
+      lastWeightedCandidates.value = []
+    }
   }
 
   async function playNext() {
@@ -1558,22 +1555,30 @@
     if (queuedVideos.value.length > 0) {
       const nextQueued = queuedVideos.value[0]
       queuedVideos.value = queuedVideos.value.slice(1)
-      await playVideoNow(nextQueued)
+      if (nextQueued) {
+        await playVideoNow(nextQueued)
+      }
       return
     }
     if (playMode.value === 'shuffle') {
       if (nextShuffleVideo.value) {
         const candidates = getShuffleCandidates('shuffle', selectedVideo.value?.fileName)
         const picked = nextShuffleVideo.value
-        selectedVideo.value = picked
-        selectedVideoName.value = picked.fileName
-        const weights = candidates.map((v) => Math.max(1, v.weightScore || 1))
-        const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-        const pickedIndex = candidates.findIndex((v) => v.fileName === picked.fileName)
-        lastPickProbability.value =
-          pickedIndex >= 0 && totalWeight > 0 ? weights[pickedIndex] / totalWeight : null
-        lastWeightedPick.value = picked
-        lastWeightedCandidates.value = candidates
+        if (picked) {
+          selectedVideo.value = picked
+          selectedVideoName.value = picked.fileName
+          const weights = candidates.map((v) => Math.max(1, v.weightScore || 1))
+          const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+          const pickedIndex = candidates.findIndex((v) => v.fileName === picked.fileName)
+          lastPickProbability.value =
+            pickedIndex >= 0 && totalWeight > 0 && weights[pickedIndex] !== undefined
+              ? weights[pickedIndex] / totalWeight
+              : null
+          lastWeightedPick.value = picked
+          lastWeightedCandidates.value = candidates
+        } else {
+          pickRandomVideo()
+        }
       } else {
         pickRandomVideo()
       }
@@ -1583,19 +1588,22 @@
       if (nextShuffleVideo.value && candidates.length) {
         const picked = nextShuffleVideo.value
         const pickedIndex = candidates.findIndex((v) => v.fileName === picked.fileName)
-        if (pickedIndex < 0) {
+        if (picked && pickedIndex >= 0) {
+          selectedVideo.value = picked
+          selectedVideoName.value = picked.fileName
+          const weights = candidates.map((v) => Math.max(1, v.weightScore || 1))
+          const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+          lastPickProbability.value =
+            pickedIndex >= 0 && totalWeight > 0 && weights[pickedIndex] !== undefined
+              ? weights[pickedIndex] / totalWeight
+              : null
+          lastWeightedPick.value = picked
+          lastWeightedCandidates.value = candidates
+        } else {
           pickRandomByTags()
           await loadSelectedVideo(true)
           return
         }
-        selectedVideo.value = picked
-        selectedVideoName.value = picked.fileName
-        const weights = candidates.map((v) => Math.max(1, v.weightScore || 1))
-        const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-        lastPickProbability.value =
-          pickedIndex >= 0 && totalWeight > 0 ? weights[pickedIndex] / totalWeight : null
-        lastWeightedPick.value = picked
-        lastWeightedCandidates.value = candidates
       } else {
         pickRandomByTags()
       }
@@ -1770,7 +1778,7 @@
   watch(
     [selectedVideo, playMode, selectedTags, selectedGirls, onlyNoThemes, onlyNoGirls],
     (values, prevValues) => {
-      const [video, mode] = values as [VideoMetadata | null, string]
+      const [video, mode] = values as unknown as [VideoMetadata | null, string]
       const prevVideo = prevValues ? (prevValues[0] as VideoMetadata | null) : null
       if (prevVideo && prevVideo.fileName !== video?.fileName) {
         if (suppressHistoryOnce.value) {
@@ -1792,10 +1800,10 @@
           )
           if (mode === 'shuffle-tags') {
             const selection = weightedPick(candidates)
-            nextShuffleVideo.value = selection ? selection.picked : null
+            nextShuffleVideo.value = selection && selection.picked ? selection.picked : null
           } else {
             const selection = weightedPick(candidates)
-            nextShuffleVideo.value = selection ? selection.picked : null
+            nextShuffleVideo.value = selection && selection.picked ? selection.picked : null
           }
         }
       } else {
@@ -1898,10 +1906,10 @@
         const candidates = getShuffleCandidates(mode, selectedVideo.value.fileName)
         if (mode === 'shuffle-tags') {
           const selection = weightedPick(candidates)
-          nextShuffleVideo.value = selection ? selection.picked : null
+          nextShuffleVideo.value = selection && selection.picked ? selection.picked : null
         } else {
           const selection = weightedPick(candidates)
-          nextShuffleVideo.value = selection ? selection.picked : null
+          nextShuffleVideo.value = selection && selection.picked ? selection.picked : null
         }
       }
       nextTick().then(updateShuffleHistoryLimit)

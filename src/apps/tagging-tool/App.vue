@@ -10,7 +10,7 @@
       :unique-songs="uniqueSongs"
       :unique-artists="uniqueArtistsForSearch"
       @select-directory="handleSelectDirectory"
-      @filter-change="filterBy = $event"
+      @filter-change="filterBy = $event as 'all' | 'untagged' | 'missing'"
       @field-filters-change="fieldFilters = $event"
       @search-change="
         (field, creator, song, artist) => {
@@ -212,6 +212,7 @@
               fieldValue: string | string[] | undefined
             ): boolean => {
               const filter = fieldFilters.value[field]
+              if (!filter) return true
               const isEmpty = !fieldValue || (Array.isArray(fieldValue) && fieldValue.length === 0)
 
               if (!filter.missing && !filter.exists) return true
@@ -336,9 +337,16 @@
 
     if (nameWithoutExt.includes(' - ')) {
       const parts = nameWithoutExt.split(' - ')
-      if (parts.length >= 2) {
-        songName.value = parts[0].trim()
-        artist.value = parts[1].trim()
+      if (parts.length >= 2 && parts[0] !== undefined && parts[1] !== undefined) {
+        songName.value = parts[0]?.trim() ?? ''
+        artist.value = parts[1]?.trim() ?? ''
+        creator.value = ''
+        webAddress.value = ''
+        mainGirl.value = ''
+        theme.value = ''
+      } else {
+        songName.value = ''
+        artist.value = ''
         creator.value = ''
         webAddress.value = ''
         mainGirl.value = ''

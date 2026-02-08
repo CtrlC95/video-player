@@ -31,7 +31,7 @@
   const props = defineProps<Props>()
 
   const videoUrl = ref('')
-  const videoPlayer = ref<HTMLVideoElement | null>(null)
+  // videoPlayer ref removed (was unused)
 
   watch(
     () => props.selectedFile,

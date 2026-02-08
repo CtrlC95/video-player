@@ -165,6 +165,8 @@
   const props = defineProps<Props>()
 
   const showThemeSuggestions = ref(false)
+  const showArtistSuggestions = ref(false)
+  const showMainGirlSuggestions = ref(false)
 
   const isDateOld = computed(() => {
     if (!fileMetadata.value) return false
@@ -336,10 +338,11 @@
   }
 
   function capitalizeLastToken(text: string): string {
+    if (!text) return ''
     const parts = text.split(/\s+/).filter(Boolean)
     if (parts.length === 0) return ''
     const lastIdx = parts.length - 1
-    parts[lastIdx] = capitalizeFirst(parts[lastIdx])
+    parts[lastIdx] = capitalizeFirst(parts[lastIdx] ?? '')
     return parts.join(' ')
   }
 
@@ -351,11 +354,7 @@
       .filter((t) => t.length > 0)
   }
 
-  function normalizeMainGirls(raw: string): string {
-    const tokens = toTokens(raw).map((t) => capitalizeLastToken(t))
-    // Ensure standard comma+space separation
-    return tokens.join(', ')
-  }
+  // normalizeMainGirls is unused, removed to fix TS6133
 
   function mergeMainGirls(existing: string, incoming: string): string {
     const existingTokens = existing

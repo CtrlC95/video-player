@@ -23,7 +23,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.creator.missing"
+                      :checked="fieldFilters.creator?.missing"
                       @change="toggleFieldFilter('creator', 'missing')"
                     />
                     M
@@ -31,7 +31,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.creator.exists"
+                      :checked="fieldFilters.creator?.exists"
                       @change="toggleFieldFilter('creator', 'exists')"
                     />
                     E
@@ -45,7 +45,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.songName.missing"
+                      :checked="fieldFilters.songName?.missing"
                       @change="toggleFieldFilter('songName', 'missing')"
                     />
                     M
@@ -53,7 +53,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.songName.exists"
+                      :checked="fieldFilters.songName?.exists"
                       @change="toggleFieldFilter('songName', 'exists')"
                     />
                     E
@@ -67,7 +67,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.artist.missing"
+                      :checked="fieldFilters.artist?.missing"
                       @change="toggleFieldFilter('artist', 'missing')"
                     />
                     M
@@ -75,7 +75,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.artist.exists"
+                      :checked="fieldFilters.artist?.exists"
                       @change="toggleFieldFilter('artist', 'exists')"
                     />
                     E
@@ -89,7 +89,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.webAddress.missing"
+                      :checked="fieldFilters.webAddress?.missing"
                       @change="toggleFieldFilter('webAddress', 'missing')"
                     />
                     M
@@ -97,7 +97,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.webAddress.exists"
+                      :checked="fieldFilters.webAddress?.exists"
                       @change="toggleFieldFilter('webAddress', 'exists')"
                     />
                     E
@@ -111,7 +111,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.mainGirl.missing"
+                      :checked="fieldFilters.mainGirl?.missing"
                       @change="toggleFieldFilter('mainGirl', 'missing')"
                     />
                     M
@@ -119,7 +119,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.mainGirl.exists"
+                      :checked="fieldFilters.mainGirl?.exists"
                       @change="toggleFieldFilter('mainGirl', 'exists')"
                     />
                     E
@@ -133,7 +133,7 @@
                   <label class="checkbox-label" title="Missing">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.theme.missing"
+                      :checked="fieldFilters.theme?.missing"
                       @change="toggleFieldFilter('theme', 'missing')"
                     />
                     M
@@ -141,7 +141,7 @@
                   <label class="checkbox-label" title="Exists">
                     <input
                       type="checkbox"
-                      :checked="fieldFilters.theme.exists"
+                      :checked="fieldFilters.theme?.exists"
                       @change="toggleFieldFilter('theme', 'exists')"
                     />
                     E
@@ -236,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, watch } from 'vue'
+  import { ref, watch } from 'vue'
   import type { FileItem } from '../../../shared/composables/useFileBrowser'
   import type { VideoMetadata } from '../../../shared/types/media'
 
@@ -281,8 +281,10 @@
   )
 
   function toggleFieldFilter(field: string, type: 'missing' | 'exists') {
-    fieldFilters.value[field][type] = !fieldFilters.value[field][type]
-    emitFilterChange()
+    if (fieldFilters.value[field]) {
+      fieldFilters.value[field][type] = !fieldFilters.value[field][type]
+      emitFilterChange()
+    }
   }
 
   function emitFilterChange() {

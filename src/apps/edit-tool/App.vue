@@ -3,15 +3,15 @@
     <div class="edit-layout">
       <aside class="left-sidebar">
         <div class="panel-block">
-          <label class="file-picker">
-            <input class="file-input" type="file" accept="video/*" @change="handleFileSelect" />
-            <span class="btn-select">Select file</span>
-          </label>
+          <button class="btn-select" @click="selectSongFile">Select song</button>
+          <button class="btn-select" type="button" @click="selectVideoFile">Select file</button>
           <button class="btn-select" @click="selectExportDirectory">Select export folder</button>
         </div>
 
         <div v-if="canEditRanges" class="panel-block">
-          <label class="panel-label" for="segment-length">Segment length (s)</label>
+          <label class="panel-label" for="segment-length">
+            Segment length (s), BPS ({{ songBpsLabel }})
+          </label>
           <input
             id="segment-length"
             v-model.number="segmentLength"
@@ -25,7 +25,7 @@
 
         <div v-if="canEditRanges" class="panel-block">
           <p class="panel-label">Ranges</p>
-          <div v-if="ranges.length" class="range-list">
+          <div v-if="ranges.length" class="range-list scrollable-range-list">
             <div v-for="(range, index) in ranges" :key="range.id" class="range-item">
               <input v-model="range.tag" class="range-input" type="text" placeholder="Tag" />
               <div class="range-times">
@@ -62,6 +62,14 @@
                   +
                 </button>
               </div>
+              <button
+                class="btn-ghost"
+                type="button"
+                :disabled="!canRender"
+                @click="renderRange(index)"
+              >
+                Render range
+              </button>
               <button class="btn-ghost" type="button" @click="removeRange(range.id)">Remove</button>
             </div>
           </div>
@@ -74,11 +82,13 @@
           <div class="center-toolbar">
             <div class="info-pill">
               <span class="info-label">File</span>
-              <span class="info-value">{{ selectedFile?.name || '' }}</span>
+              <span class="info-value">{{ selectedFileName || '' }}</span>
             </div>
             <div class="info-pill">
               <span class="info-label">Export</span>
-              <span class="info-value">{{ exportPath || '' }}</span>
+              <span class="info-value">
+                {{ exportPath && renderFolderName ? `${exportPath}/${renderFolderName}` : '' }}
+              </span>
             </div>
           </div>
           <div class="video-shell">
@@ -89,7 +99,7 @@
               playsinline
               @click="togglePlayPause"
             ></video>
-            <div v-if="!selectedFile" class="video-overlay">
+            <div v-if="!selectedFilePath" class="video-overlay">
               <p>Select a file to preview</p>
             </div>
           </div>
@@ -125,9 +135,11 @@
             <div class="control-row">
               <div class="control-spacer"></div>
               <div class="transport-controls">
+                <button class="control-btn" @click="stepFrames(-5)">⏮</button>
                 <button class="control-btn" @click="togglePlayPause">
                   {{ isPlaying ? '⏸' : '▶' }}
                 </button>
+                <button class="control-btn" @click="stepFrames(5)">⏭</button>
               </div>
               <div class="control-spacer"></div>
             </div>
@@ -137,27 +149,37 @@
 
       <aside class="right-sidebar">
         <div class="panel-block">
-          <p class="panel-label">Ranges</p>
-          <div class="range-menu">
-            <button
-              class="range-nav-btn"
-              type="button"
-              :disabled="selectedRangeIndex <= -1"
-              @click="selectPrevRange"
+          <p class="panel-label">Video tags</p>
+          <input v-model="videoTagDraft" class="tag-input" type="text" placeholder="Input" />
+          <button class="btn-select" type="button" @click="applyVideoTag">Apply</button>
+          <ul v-if="currentTagList.length" class="tag-list">
+            <li
+              v-for="(tag, index) in currentTagList"
+              :key="`${tag}-${index}`"
+              class="tag-item"
+              @click="removeTagAt(index)"
             >
-              <span class="range-nav-icon">◀</span>
-            </button>
-            <div class="range-pill">
-              <span class="range-pill-text">{{ selectedRangeLabel }}</span>
-            </div>
-            <button
-              class="range-nav-btn"
-              type="button"
-              :disabled="selectedRangeIndex >= maxRangeIndex"
-              @click="selectNextRange"
-            >
-              <span class="range-nav-icon">▶</span>
-            </button>
+              {{ tag }}
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="canEditRanges" class="panel-block">
+          <p v-if="selectedRangeOutputName" class="field-value">
+            Selected output: {{ selectedRangeOutputName }}
+          </p>
+          <button class="btn-select" type="button" :disabled="!canRender" @click="renderClips">
+            Render
+          </button>
+          <p v-if="renderMessage" class="field-value">{{ renderMessage }}</p>
+          <div v-if="renderPreview.length" class="render-preview">
+            <p class="panel-label">Preview</p>
+            <ul class="render-list">
+              <li v-for="item in renderPreview" :key="item.id" class="render-item">
+                <span class="render-name">{{ item.name }}</span>
+                <span class="render-count">{{ item.count }} clips</span>
+              </li>
+            </ul>
           </div>
         </div>
       </aside>
@@ -166,14 +188,22 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch, computed, onBeforeUnmount } from 'vue'
+  import { ref, watch, computed } from 'vue'
+  import { invoke } from '@tauri-apps/api/core'
+  import { open as openDialog } from '@tauri-apps/plugin-dialog'
+  import { convertFileSrc } from '@tauri-apps/api/core'
+  import { open as openFile } from '@tauri-apps/plugin-fs'
 
   const exportPath = ref('')
-  const exportDirectoryHandle = ref<any | null>(null)
-  const selectedFile = ref<File | null>(null)
+  const exportDirectoryPath = ref('')
+  const selectedFilePath = ref('')
+  const selectedFileName = ref('')
   const videoUrl = ref('')
   const videoEl = ref<HTMLVideoElement | null>(null)
   const segmentLength = ref(15)
+  const selectedSongFile = ref<File | null>(null)
+  const songBpm = ref<number | null>(null)
+  const songBpmStatus = ref<'idle' | 'loading' | 'error'>('idle')
   const ranges = ref<Array<{ id: string; tag: string; start: number; end: number }>>([])
   const isPlaying = ref(false)
   const currentTime = ref(0)
@@ -181,21 +211,54 @@
   const isScrubbing = ref(false)
   const progressBarEl = ref<HTMLElement | null>(null)
   let rangeCounter = 1
-  let currentObjectUrl: string | null = null
 
   const currentTimeLabel = computed(() => formatTime(currentTime.value))
   const durationLabel = computed(() => formatTime(duration.value))
   const progressPercent = computed(() =>
     duration.value > 0 ? Math.min(100, (currentTime.value / duration.value) * 100) : 0
   )
-  const canEditRanges = computed(() => Boolean(selectedFile.value) && Boolean(exportPath.value))
-  const selectedRangeIndex = ref(-1)
-  const maxRangeIndex = computed(() => ranges.value.length - 1)
-  const selectedRangeLabel = computed(() => {
-    if (selectedRangeIndex.value < 0) return 'Video'
-    const range = ranges.value[selectedRangeIndex.value]
-    if (!range) return 'Video'
-    return range.tag || `Range ${selectedRangeIndex.value + 1}`
+  const canEditRanges = computed(
+    () => Boolean(selectedFilePath.value) && Boolean(exportDirectoryPath.value)
+  )
+  const songBpsLabel = computed(() => {
+    if (songBpmStatus.value === 'loading') return '...'
+    if (songBpmStatus.value === 'error') return 'error'
+    if (songBpm.value === null) return '--'
+    return (songBpm.value / 60).toFixed(2)
+  })
+  const videoGirlTag = ref('')
+  const videoTagDraft = ref('')
+  const currentTagList = computed(() => {
+    return parseTagList(videoGirlTag.value)
+  })
+  const renderFolderName = computed(() => {
+    if (!selectedFileName.value) return ''
+    const baseName = sanitizeFilePart(stripExtension(selectedFileName.value))
+    const tags = parseTagList(videoGirlTag.value)
+      .map((tag) => sanitizeFilePart(tag))
+      .filter(Boolean)
+    if (!tags.length) return baseName
+    return `[${tags.join(', ')}] ${baseName}`
+  })
+  const selectedRangeOutputName = computed(() => {
+    const previewRange = ranges.value[0]
+    if (!previewRange) return ''
+    const totalSegments = getRangeSegmentCount(previewRange)
+    return buildOutputSegmentName(previewRange, 0, 0, totalSegments)
+  })
+  const canRender = computed(() =>
+    Boolean(canEditRanges.value && ranges.value.length && renderFolderName.value)
+  )
+  const renderMessage = ref('')
+  const renderPreview = computed(() => {
+    return ranges.value.map((range, index) => {
+      const count = getRangeSegmentCount(range)
+      return {
+        id: range.id,
+        name: buildOutputRangeName(range, index),
+        count,
+      }
+    })
   })
   const rangeColors = ['#60a5fa', '#f97316', '#34d399', '#f472b6', '#a78bfa', '#facc15']
   const rangeSegments = computed(() => {
@@ -217,45 +280,103 @@
       .filter((segment) => segment.width > 0)
   })
 
-  function handleFileSelect(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0] || null
-    selectedFile.value = file
+  async function selectVideoFile() {
+    const selected = await openDialog({
+      multiple: false,
+      directory: false,
+      filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v'] }],
+    })
+
+    if (!selected || Array.isArray(selected)) return
+    selectedFilePath.value = selected
+    selectedFileName.value = fileNameFromPath(selected)
+  }
+
+  function selectSongFile() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'audio/*,video/*'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0] || null
+      selectedSongFile.value = file
+    })
+    input.click()
   }
 
   async function selectExportDirectory() {
     try {
-      const dirHandle = await (window as any).showDirectoryPicker()
-      exportDirectoryHandle.value = dirHandle
-      exportPath.value = dirHandle?.name || ''
+      const selected = await openDialog({ directory: true, multiple: false })
+      if (!selected || Array.isArray(selected)) return
+      exportDirectoryPath.value = selected as string
+      exportPath.value = fileNameFromPath(selected as string)
     } catch (err) {
       console.error('Failed to select export directory', err)
     }
   }
 
-  watch(selectedFile, (file) => {
-    if (currentObjectUrl) {
-      URL.revokeObjectURL(currentObjectUrl)
-      currentObjectUrl = null
-    }
-
-    if (file) {
-      currentObjectUrl = URL.createObjectURL(file)
-      videoUrl.value = currentObjectUrl
+  watch(selectedFilePath, async (path) => {
+    if (path) {
+      // Use Blob for dev mode, convertFileSrc for production
+      const isDev = window.location.protocol.startsWith('http')
+      if (isDev) {
+        try {
+          const file = await openFile(path, { read: true })
+          const stat = await file.stat()
+          const buffer = new Uint8Array(stat.size)
+          await file.read(buffer)
+          const blob = new Blob([buffer], { type: 'video/mp4' })
+          if (videoUrl.value) {
+            URL.revokeObjectURL(videoUrl.value)
+          }
+          videoUrl.value = URL.createObjectURL(blob)
+          await file.close()
+          console.log('videoUrl (blob)', videoUrl.value)
+        } catch (err) {
+          console.error('Failed to load video file (dev mode)', err)
+          videoUrl.value = ''
+        }
+      } else {
+        videoUrl.value = convertFileSrc(path)
+        console.log('videoUrl (tauri)', videoUrl.value)
+      }
     } else {
       videoUrl.value = ''
     }
   })
 
-  watch(ranges, (nextRanges) => {
-    if (nextRanges.length === 0) {
-      selectedRangeIndex.value = -1
+  let songBpmRequestId = 0
+  watch(selectedSongFile, async (file) => {
+    songBpmRequestId += 1
+    const requestId = songBpmRequestId
+    if (!file) {
+      songBpm.value = null
+      songBpmStatus.value = 'idle'
       return
     }
-    if (selectedRangeIndex.value > nextRanges.length - 1) {
-      selectedRangeIndex.value = nextRanges.length - 1
+
+    songBpmStatus.value = 'loading'
+    songBpm.value = null
+
+    try {
+      const bpm = await extractBpmFromFile(file)
+      if (requestId !== songBpmRequestId) return
+      songBpm.value = bpm
+      songBpmStatus.value = 'idle'
+    } catch (err) {
+      if (requestId !== songBpmRequestId) return
+      console.error('Failed to estimate BPM', err)
+      songBpm.value = null
+      songBpmStatus.value = 'error'
     }
   })
+
+  watch(
+    () => videoGirlTag.value,
+    () => {
+      videoTagDraft.value = videoGirlTag.value
+    },
+    { immediate: true }
+  )
 
   watch(videoEl, (el, _, onCleanup) => {
     if (!el) return
@@ -290,13 +411,6 @@
     })
   })
 
-  onBeforeUnmount(() => {
-    if (currentObjectUrl) {
-      URL.revokeObjectURL(currentObjectUrl)
-      currentObjectUrl = null
-    }
-  })
-
   function addRange() {
     const id = `range-${rangeCounter}`
     const lastRange = ranges.value.length ? ranges.value[ranges.value.length - 1] : null
@@ -311,7 +425,12 @@
       const lastEnd = Math.max(0, lastRange.end)
       const lastLength = Math.max(0, lastRange.end - lastRange.start)
       const nextEnd = Math.min(lastEnd + lastLength, maxEnd)
-      ranges.value.push({ id, tag: `Range ${rangeCounter}`, start: lastEnd, end: nextEnd })
+      ranges.value.push({
+        id,
+        tag: `Range ${rangeCounter}`,
+        start: lastEnd,
+        end: nextEnd,
+      })
     }
     rangeCounter += 1
   }
@@ -320,12 +439,236 @@
     ranges.value = ranges.value.filter((range) => range.id !== id)
   }
 
-  function selectPrevRange() {
-    selectedRangeIndex.value = Math.max(-1, selectedRangeIndex.value - 1)
+  function applyVideoTag() {
+    const nextValue = videoTagDraft.value.trim()
+    if (!nextValue) return
+    videoGirlTag.value = appendTag(videoGirlTag.value, nextValue)
+    videoTagDraft.value = ''
   }
 
-  function selectNextRange() {
-    selectedRangeIndex.value = Math.min(maxRangeIndex.value, selectedRangeIndex.value + 1)
+  function appendTag(current: string, nextValue: string) {
+    const base = current.trim()
+    if (!base) return nextValue
+    return `${base}, ${nextValue}`
+  }
+
+  function parseTagList(value: string) {
+    return value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  }
+
+  function stripExtension(filename: string) {
+    const lastDot = filename.lastIndexOf('.')
+    if (lastDot <= 0) return filename
+    return filename.slice(0, lastDot)
+  }
+
+  function fileNameFromPath(value: string) {
+    const normalized = value.replace(/\\/g, '/')
+    const parts = normalized.split('/')
+    return parts[parts.length - 1] || value
+  }
+
+  function joinPath(base: string, name: string) {
+    const separator = base.includes('\\') ? '\\' : '/'
+    const trimmed = base.endsWith('/') || base.endsWith('\\') ? base.slice(0, -1) : base
+    return `${trimmed}${separator}${name}`
+  }
+
+  function sanitizeFilePart(value: string) {
+    return value.replace(/[\\/:*?"<>|]/g, '').trim()
+  }
+
+  function buildOutputRangeName(range: { tag: string }, index: number) {
+    const fallbackName = `Range ${index + 1}`
+    const rangeName = sanitizeFilePart(range.tag || fallbackName) || fallbackName
+    return rangeName
+  }
+
+  function buildOutputSegmentName(
+    range: { tag: string },
+    index: number,
+    segmentIndex: number,
+    totalSegments: number
+  ) {
+    const base = buildOutputRangeName(range, index)
+    const width = Math.max(3, String(totalSegments).length)
+    const suffix = String(segmentIndex + 1).padStart(width, '0')
+    return `${base} - ${suffix}.mp4`
+  }
+
+  function getRangeSegmentCount(range: { start: number; end: number }) {
+    const start = Math.max(0, range.start)
+    const end = Math.max(start, range.end)
+    const length = Math.max(1, segmentLength.value)
+    return Math.max(1, Math.ceil((end - start) / length))
+  }
+
+  function buildRenderPlan() {
+    const plan: Array<{
+      filename: string
+      start: number
+      end: number
+      range_id: string
+      range_name: string
+    }> = []
+
+    ranges.value.forEach((range, index) => {
+      const start = Math.max(0, range.start)
+      const end = Math.max(start, range.end)
+      const length = Math.max(1, segmentLength.value)
+      const totalSegments = Math.max(1, Math.ceil((end - start) / length))
+
+      const rangeName = buildOutputRangeName(range, index)
+      for (let i = 0; i < totalSegments; i += 1) {
+        const segmentStart = start + i * length
+        const segmentEnd = Math.min(segmentStart + length, end)
+        const filename = buildOutputSegmentName(range, index, i, totalSegments)
+        plan.push({
+          filename,
+          start: segmentStart,
+          end: segmentEnd,
+          range_id: range.id,
+          range_name: rangeName,
+        })
+      }
+    })
+
+    return plan
+  }
+
+  function buildRenderPlanForRange(index: number) {
+    const range = ranges.value[index]
+    if (!range) return []
+    const start = Math.max(0, range.start)
+    const end = Math.max(start, range.end)
+    const length = Math.max(1, segmentLength.value)
+    const totalSegments = Math.max(1, Math.ceil((end - start) / length))
+    const rangeName = buildOutputRangeName(range, index)
+    const plan: Array<{
+      filename: string
+      start: number
+      end: number
+      range_id: string
+      range_name: string
+    }> = []
+
+    for (let i = 0; i < totalSegments; i += 1) {
+      const segmentStart = start + i * length
+      const segmentEnd = Math.min(segmentStart + length, end)
+      const filename = buildOutputSegmentName(range, index, i, totalSegments)
+      plan.push({
+        filename,
+        start: segmentStart,
+        end: segmentEnd,
+        range_id: range.id,
+        range_name: rangeName,
+      })
+    }
+
+    return plan
+  }
+
+  function buildSummaryItems(index?: number) {
+    if (index !== undefined) {
+      const range = ranges.value[index]
+      if (!range) return []
+      const start = Math.max(0, range.start)
+      const end = Math.max(start, range.end)
+      const fileCount = getRangeSegmentCount(range)
+      return [
+        {
+          range_name: buildOutputRangeName(range, index),
+          start,
+          end,
+          file_count: fileCount,
+        },
+      ]
+    }
+
+    return ranges.value.map((range, rangeIndex) => {
+      const start = Math.max(0, range.start)
+      const end = Math.max(start, range.end)
+      return {
+        range_name: buildOutputRangeName(range, rangeIndex),
+        start,
+        end,
+        file_count: getRangeSegmentCount(range),
+      }
+    })
+  }
+
+  async function renderClips() {
+    if (!canRender.value) return
+    if (!exportDirectoryPath.value || !renderFolderName.value || !selectedFilePath.value) return
+
+    try {
+      renderMessage.value = 'Rendering...'
+      const outputDir = joinPath(exportDirectoryPath.value, renderFolderName.value)
+      const plan = buildRenderPlan()
+      const summary = buildSummaryItems()
+
+      if (!plan.length) {
+        renderMessage.value = 'No clips to render.'
+        return
+      }
+
+      await invoke('render_segments', {
+        inputPath: selectedFilePath.value,
+        outputDir,
+        segments: plan,
+        summary,
+        summaryMode: 'overwrite',
+      })
+
+      renderMessage.value = `Rendered ${plan.length} clips.`
+    } catch (err) {
+      console.error('Render failed', err)
+      renderMessage.value = 'Render failed. Check console.'
+    }
+  }
+
+  async function renderRange(index: number) {
+    if (!canRender.value) return
+    if (!exportDirectoryPath.value || !renderFolderName.value || !selectedFilePath.value) return
+
+    try {
+      renderMessage.value = 'Rendering range...'
+      const outputDir = joinPath(exportDirectoryPath.value, renderFolderName.value)
+      const plan = buildRenderPlanForRange(index)
+      const summary = buildSummaryItems(index)
+
+      if (!plan.length) {
+        renderMessage.value = 'No clips to render.'
+        return
+      }
+
+      await invoke('render_segments', {
+        inputPath: selectedFilePath.value,
+        outputDir,
+        segments: plan,
+        summary,
+        summaryMode: 'append',
+      })
+
+      renderMessage.value = `Rendered ${plan.length} clips.`
+    } catch (err) {
+      console.error('Render range failed', err)
+      renderMessage.value = 'Render failed. Check console.'
+    }
+  }
+
+  function serializeTagList(list: string[]) {
+    return list.join(', ')
+  }
+
+  function removeTagAt(index: number) {
+    const baseList = parseTagList(videoGirlTag.value)
+    if (index < 0 || index >= baseList.length) return
+    baseList.splice(index, 1)
+    videoGirlTag.value = serializeTagList(baseList)
   }
 
   function formatTime(totalSeconds: number) {
@@ -422,6 +765,16 @@
     }
   }
 
+  function stepFrames(frameDelta: number) {
+    const el = videoEl.value
+    if (!el || duration.value <= 0) return
+    const fps = 30
+    const stepSeconds = (1 / fps) * frameDelta
+    const nextTime = Math.min(Math.max(el.currentTime + stepSeconds, 0), duration.value)
+    el.currentTime = nextTime
+    currentTime.value = nextTime
+  }
+
   function updateTimeFromClientX(clientX: number) {
     const target = progressBarEl.value
     if (!target) return
@@ -457,6 +810,85 @@
 
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerup', handlePointerUp)
+  }
+
+  async function extractBpmFromFile(file: File) {
+    const audioContext = new AudioContext()
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
+      return estimateBpmFromAudioBuffer(audioBuffer)
+    } finally {
+      await audioContext.close()
+    }
+  }
+
+  function estimateBpmFromAudioBuffer(buffer: AudioBuffer) {
+    const maxSeconds = 90
+    const maxSamples = Math.min(buffer.length, Math.floor(buffer.sampleRate * maxSeconds))
+    const channelCount = buffer.numberOfChannels
+    const mono = new Float32Array(maxSamples)
+
+    for (let channel = 0; channel < channelCount; channel += 1) {
+      const data = buffer.getChannelData(channel)
+      if (!data || !mono) continue
+      for (let i = 0; i < maxSamples; i += 1) {
+        if (typeof mono[i] === 'undefined' || typeof data[i] === 'undefined') continue
+        mono[i] = Number(mono[i]) + Number(data[i]) / channelCount
+      }
+    }
+
+    const envelopeRate = 200
+    const step = Math.max(1, Math.floor(buffer.sampleRate / envelopeRate))
+    const envelopeLength = Math.floor(maxSamples / step)
+    const envelope = new Float32Array(envelopeLength)
+
+    for (let i = 0; i < envelopeLength; i += 1) {
+      if (typeof envelope[i] === 'undefined') continue
+      let sum = 0
+      const offset = i * step
+      for (let j = 0; j < step; j += 1) {
+        const sample = mono[offset + j] || 0
+        sum += sample * sample
+      }
+      envelope[i] = Math.sqrt(sum / step)
+    }
+
+    let mean = 0
+    for (let i = 0; i < envelopeLength; i += 1) {
+      if (typeof envelope[i] === 'undefined') continue
+      mean += Number(envelope[i])
+    }
+    mean /= Math.max(1, envelopeLength)
+
+    for (let i = 0; i < envelopeLength; i += 1) {
+      if (typeof envelope[i] === 'undefined') continue
+      envelope[i] = Number(envelope[i]) - mean
+    }
+
+    const minBpm = 60
+    const maxBpm = 200
+    const sampleRate = envelopeRate
+    let bestBpm = minBpm
+    let bestScore = -Infinity
+
+    for (let bpm = minBpm; bpm <= maxBpm; bpm += 1) {
+      const lag = Math.round((sampleRate * 60) / bpm)
+      if (lag <= 0 || lag >= envelopeLength) continue
+
+      let score = 0
+      for (let i = 0; i < envelopeLength - lag; i += 1) {
+        if (typeof envelope[i] === 'undefined' || typeof envelope[i + lag] === 'undefined') continue
+        score += Number(envelope[i]) * Number(envelope[i + lag])
+      }
+
+      if (score > bestScore) {
+        bestScore = score
+        bestBpm = bpm
+      }
+    }
+
+    return bestBpm
   }
 </script>
 
@@ -532,6 +964,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .scrollable-range-list {
+    max-height: 40vh;
+    overflow-y: auto;
   }
 
   .range-item {
@@ -604,15 +1042,6 @@
   .range-empty {
     color: #9ca3af;
     font-size: 0.82rem;
-  }
-
-  .file-picker {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .file-input {
-    display: none;
   }
 
   .btn-select {
@@ -839,63 +1268,93 @@
     font-size: 0.85rem;
   }
 
-  .range-menu {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.1rem;
-  }
-
-  .range-menu > * {
-    flex: 0 0 auto;
-  }
-
-  .range-menu .range-pill {
-    width: 140px;
-  }
-
-  .range-nav-btn {
-    width: 40px;
+  .tag-input {
+    width: 100%;
     height: 36px;
+    padding: 0.55rem 0.75rem;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 10px;
+    color: #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .tag-input:focus {
+    outline: 2px solid rgba(99, 102, 241, 0.45);
+    border-color: transparent;
+  }
+
+  .tag-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    color: #cbd5f5;
+    font-size: 0.8rem;
+  }
+
+  .tag-item {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    background: rgba(12, 18, 30, 0.45);
-    border: none;
-    border-radius: 8px;
-    color: #cbd5f5;
-    cursor: pointer;
-  }
-
-  .range-nav-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .range-nav-btn:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.2);
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(99, 102, 241, 0.35);
     color: #e0e7ff;
+    cursor: pointer;
+    line-height: 1.2;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.15s ease;
   }
 
-  .range-nav-icon {
-    font-size: 1.1rem;
+  .tag-item:hover {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(129, 140, 248, 0.75);
+    transform: translateY(-1px);
   }
 
-  .range-pill {
-    flex: 1;
-    height: 36px;
+  .render-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .render-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .render-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 0.75rem;
-    background: rgba(12, 18, 30, 0.45);
-    border: none;
-    border-radius: 10px;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    background: rgba(12, 18, 30, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #cbd5f5;
+    font-size: 0.78rem;
   }
 
-  .range-pill-text {
-    font-size: 0.85rem;
+  .render-name {
     color: #e5e7eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .render-count {
+    color: #a5b4fc;
+    font-weight: 600;
+    white-space: nowrap;
   }
 </style>

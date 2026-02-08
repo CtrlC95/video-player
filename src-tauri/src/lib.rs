@@ -1,6 +1,11 @@
+use tauri_plugin_fs;
 use scraper::{Html, Selector};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::Path;
+use std::process::Command;
 use std::time::SystemTime;
 
 // Tags to exclude from scraping (hardcoded filter list)
@@ -37,6 +42,23 @@ pub struct ScrapeResult {
 pub struct FileMetadata {
   pub created: String,
   pub modified: String,
+}
+
+#[derive(Deserialize)]
+pub struct RenderSegment {
+  pub filename: String,
+  pub start: f64,
+  pub end: f64,
+  pub range_id: String,
+  pub range_name: String,
+}
+
+#[derive(Deserialize)]
+pub struct RenderSummaryItem {
+  pub range_name: String,
+  pub start: f64,
+  pub end: f64,
+  pub file_count: u32,
 }
 
 
@@ -220,11 +242,111 @@ fn format_metadata(metadata: std::fs::Metadata) -> Result<FileMetadata, String> 
   Ok(FileMetadata { created, modified })
 }
 
+fn format_timestamp(seconds: f64) -> String {
+  let total_seconds = seconds.max(0.0).floor() as u64;
+  let hours = total_seconds / 3600;
+  let minutes = (total_seconds % 3600) / 60;
+  let secs = total_seconds % 60;
+  if hours > 0 {
+    format!("{:02}:{:02}:{:02}", hours, minutes, secs)
+  } else {
+    format!("{:02}:{:02}", minutes, secs)
+  }
+}
+
+#[tauri::command]
+async fn render_segments(
+  input_path: String,
+  output_dir: String,
+  segments: Vec<RenderSegment>,
+  summary: Vec<RenderSummaryItem>,
+  summary_mode: String,
+) -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    let output_path = Path::new(&output_dir);
+    fs::create_dir_all(output_path).map_err(|e| e.to_string())?;
+
+    for segment in segments {
+      let duration = (segment.end - segment.start).max(0.0);
+      if duration <= 0.0 {
+        continue;
+      }
+
+      let output_file = output_path.join(&segment.filename);
+      let status = Command::new("ffmpeg")
+        .args([
+          "-y",
+          "-ss",
+          &format!("{:.3}", segment.start),
+          "-i",
+          &input_path,
+          "-t",
+          &format!("{:.3}", duration),
+          "-c",
+          "copy",
+          output_file.to_string_lossy().as_ref(),
+        ])
+        .status()
+        .map_err(|e| e.to_string())?;
+
+      if !status.success() {
+          eprintln!("ffmpeg failed for {}", segment.filename);
+          return Err(format!("ffmpeg failed for {}", segment.filename));
+      }
+    }
+
+    let summary_path = output_path.join("render-summary.txt");
+    let mut file = if summary_mode == "append" {
+      OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&summary_path)
+        .map_err(|e| {
+            eprintln!("Failed to open summary file for append: {}", e);
+            e.to_string()
+        })?
+    } else {
+      OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&summary_path)
+        .map_err(|e| {
+            eprintln!("Failed to open summary file for write: {}", e);
+            e.to_string()
+        })?
+    };
+
+    for item in summary {
+      let line = format!(
+        "{} - {} {} {}\n",
+        format_timestamp(item.start),
+        format_timestamp(item.end),
+        item.range_name,
+        item.file_count
+      );
+      file.write_all(line.as_bytes()).map_err(|e| {
+          eprintln!("Failed to write summary line: {}", e);
+          e.to_string()
+      })?;
+    }
+
+    Ok(())
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![fetch_h3_and_spans, get_file_metadata])
+    .invoke_handler(tauri::generate_handler![
+      fetch_h3_and_spans,
+      get_file_metadata,
+      render_segments
+    ])
+    .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_fs::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
