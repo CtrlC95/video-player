@@ -926,12 +926,14 @@
     gap: 1.25rem;
     padding: 1rem;
     min-height: 0;
+    overflow: hidden;
   }
 
   .panel-block {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-height: 0;
   }
 
   .panel-block .btn-select {
@@ -964,12 +966,22 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    max-height: 40vh;
+    flex-grow: 1;
+    min-height: 0;
     overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+  }
+  .range-list::-webkit-scrollbar {
+    display: none;
   }
   .scrollable-range-list {
-    max-height: 40vh;
+    flex-grow: 1;
+    min-height: 0;
     overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .scrollable-range-list::-webkit-scrollbar {
+    display: none;
   }
 
   .range-item {
@@ -1284,17 +1296,27 @@
     border-color: transparent;
   }
 
-  .tag-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  .range-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    color: #cbd5f5;
-    font-size: 0.8rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
   }
-
+  .range-list::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollable-range-list {
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .scrollable-range-list::-webkit-scrollbar {
+    display: none;
+  }
   .tag-item {
     display: inline-flex;
     align-items: center;
