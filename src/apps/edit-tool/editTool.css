@@ -1,0 +1,79 @@
+.edit-tool-app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.edit-tool-app,
+.edit-tool-app * {
+  box-sizing: border-box;
+}
+
+.edit-layout {
+  flex: 1;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  min-height: 0;
+}
+
+.left-sidebar,
+.right-sidebar {
+  width: 260px;
+  background: rgba(17, 24, 39, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.panel-block .btn-select {
+  width: 100%;
+  text-align: left;
+}
+
+.panel-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.btn-select {
+  padding: 0.6rem 1rem;
+  background: rgba(99, 102, 241, 0.2);
+  color: #e0e7ff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.btn-select:hover {
+  background: rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+}
+
+.field-value {
+  font-size: 0.85rem;
+  color: #cbd5f5;
+  word-break: break-word;
+}

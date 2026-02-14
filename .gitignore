@@ -10,6 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+src-tauri/target
+src-tauri/gen/
+src-tauri/gen/schemas/
 *.local
 
 # Local data files

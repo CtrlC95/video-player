@@ -1,46 +1,41 @@
+import { useVideoFileBrowser } from '../composables/useFileBrowser'
+import {
+  audioContext,
+  currentTime,
+  duration,
+  girlMatchMode,
+  isMuted,
+  isPlaying,
+  lastPickProbability,
+  lastWeightedCandidates,
+  lastWeightedPick,
+  nextShuffleVideo,
+  onlyNoGirls,
+  onlyNoThemes,
+  playMode,
+  queuedVideos,
+  selectedGirls,
+  selectedTags,
+  selectedVideo,
+  shuffleHistory,
+  suppressHistoryOnce,
+  tagMatchMode,
+  videoEl,
+  videoHeight,
+  videosInDatabase,
+  videoSrc,
+  videoWidth,
+  volume,
+} from '../composables/useVideoplayerState'
+import { selectedVideoName } from '../state/videoSelection'
 import { nextTick, ref } from 'vue'
 import type { VideoMetadata } from '../types/media'
-import { selectedVideoName } from '../../shared/state/videoSelection'
-import { useVideoFileBrowser } from './useFileBrowser'
 
 const audioSource = ref<MediaElementAudioSourceNode | null>(null)
 const gainNode = ref<GainNode | null>(null)
 let currentObjectUrl: string | null = null
 
 const { directoryHandle } = useVideoFileBrowser()
-
-export const selectedTags = ref<string[]>([])
-export const playMode = ref<'shuffle' | 'shuffle-tags' | 'search'>('shuffle')
-export const queuedVideos = ref<VideoMetadata[]>([])
-export const selectedVideo = ref<VideoMetadata | null>(null)
-export const nextShuffleVideo = ref<VideoMetadata | null>(null)
-export const shuffleHistory = ref<VideoMetadata[]>([])
-export const selectedGirls = ref<string[]>([])
-export const onlyNoThemes = ref(false)
-export const onlyNoGirls = ref(false)
-export const tagMatchMode = ref<'any' | 'all'>('any')
-export const girlMatchMode = ref<'any' | 'all'>('any')
-export const videosInDatabase = ref<VideoMetadata[]>([])
-export const lastWeightedPick = ref<VideoMetadata | null>(null)
-export const lastWeightedCandidates = ref<VideoMetadata[]>([])
-export const suppressHistoryOnce = ref(false)
-export const lastPickProbability = ref<number | null>(null)
-export const videoSrc = ref<string>('')
-export const videoEl = ref<HTMLVideoElement | null>(null)
-export const currentTime = ref(0)
-export const duration = ref(0)
-export const videoWidth = ref(0)
-export const videoHeight = ref(0)
-export const isPlaying = ref(false)
-export const volume = ref(1)
-export const isMuted = ref(false)
-export const audioContext = ref<AudioContext | null>(null)
-export const pendingDelete = ref('no')
-export const pendingEditOptions = ref<string[]>([])
-export const pendingUpdateFormOptions = ref<string[]>([])
-export const pendingUpdateGirls = ref('')
-export const pendingUpdateThemes = ref('')
-export const volumeBeforeMute = ref(1)
 
 export function normalizeList(value?: string[] | string) {
   if (!value) return []
@@ -298,6 +293,30 @@ export function pickRandomVideo() {
   }
 }
 
+export function getShuffleCandidates(mode: 'shuffle' | 'shuffle-tags', currentFileName?: string) {
+  if (mode === 'shuffle') {
+    return videosInDatabase.value.filter((v) => v.fileName !== currentFileName)
+  }
+
+  const selectedThemesLower = selectedTags.value.map((t) => t.toLowerCase())
+  const selectedGirlsLower = selectedGirls.value.map((g) => g.toLowerCase())
+  return videosInDatabase.value.filter((v) => {
+    if (currentFileName && v.fileName === currentFileName) return false
+    const themesLower = normalizeList(v.theme).map((t) => t.toLowerCase())
+    const girlsLower = normalizeList(v.mainGirl).map((g) => g.toLowerCase())
+    const matchesThemes = matchesThemeFilter(themesLower, selectedThemesLower)
+    const matchesGirls = matchesGirlFilter(girlsLower, selectedGirlsLower)
+    return matchesThemes && matchesGirls
+  })
+}
+
+export function parseMultiOption(value?: string) {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item)
+}
 function pickNextSequential() {
   if (videosInDatabase.value.length === 0) {
     selectedVideo.value = null
@@ -324,31 +343,6 @@ function pickNextSequential() {
     selectedVideoName.value = selectedVideo.value.fileName
     lastPickProbability.value = 1 / videosInDatabase.value.length
   }
-}
-
-export function getShuffleCandidates(mode: 'shuffle' | 'shuffle-tags', currentFileName?: string) {
-  if (mode === 'shuffle') {
-    return videosInDatabase.value.filter((v) => v.fileName !== currentFileName)
-  }
-
-  const selectedThemesLower = selectedTags.value.map((t) => t.toLowerCase())
-  const selectedGirlsLower = selectedGirls.value.map((g) => g.toLowerCase())
-  return videosInDatabase.value.filter((v) => {
-    if (currentFileName && v.fileName === currentFileName) return false
-    const themesLower = normalizeList(v.theme).map((t) => t.toLowerCase())
-    const girlsLower = normalizeList(v.mainGirl).map((g) => g.toLowerCase())
-    const matchesThemes = matchesThemeFilter(themesLower, selectedThemesLower)
-    const matchesGirls = matchesGirlFilter(girlsLower, selectedGirlsLower)
-    return matchesThemes && matchesGirls
-  })
-}
-
-export function parseMultiOption(value?: string) {
-  if (!value) return []
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item)
 }
 
 function matchesSelection(itemsLower: string[], selectedLower: string[], mode: 'any' | 'all') {

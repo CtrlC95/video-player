@@ -55,15 +55,11 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import {
-    applyGain,
     audioContext,
     currentTime,
     duration,
     isMuted,
     isPlaying,
-    loadSelectedVideo,
-    playNext,
-    playVideoNow,
     queuedVideos,
     selectedVideo,
     shuffleHistory,
@@ -72,17 +68,22 @@
     videoSrc,
     volume,
     volumeBeforeMute,
-  } from '../../../shared/composables/useSidebarState'
+  } from '../../../shared/composables/useVideoplayerState'
+  import {
+    applyGain,
+    loadSelectedVideo,
+    playNext,
+    playVideoNow,
+  } from '../../../shared/utils/videoPlayerUtils'
   import { useVideoFileBrowser } from '../../../shared/composables/useFileBrowser'
 
   const { directoryHandle } = useVideoFileBrowser()
-
   const isScrubbing = ref(false)
   const progressBarEl = ref<HTMLElement | null>(null)
+
   const currentTimeLabel = computed(() => formatTime(currentTime.value))
   const durationLabel = computed(() => formatTime(duration.value))
   const volumePercent = computed(() => `${Math.round(volume.value * 100)}%`)
-
   const progressPercent = computed(() =>
     duration.value > 0 ? Math.min(100, (currentTime.value / duration.value) * 100) : 0
   )
@@ -107,24 +108,6 @@
       isMuted.value = false
     }
     applyGain()
-  }
-
-  async function togglePlayPause() {
-    const el = videoEl.value
-    if (!el) return
-
-    if (el.paused) {
-      try {
-        await resumeAudioContext()
-        await el.play()
-        isPlaying.value = true
-      } catch {
-        isPlaying.value = false
-      }
-    } else {
-      el.pause()
-      isPlaying.value = false
-    }
   }
 
   function formatTime(totalSeconds: number) {
@@ -171,6 +154,24 @@
     window.addEventListener('pointerup', handlePointerUp)
   }
 
+  async function togglePlayPause() {
+    const el = videoEl.value
+    if (!el) return
+
+    if (el.paused) {
+      try {
+        await resumeAudioContext()
+        await el.play()
+        isPlaying.value = true
+      } catch {
+        isPlaying.value = false
+      }
+    } else {
+      el.pause()
+      isPlaying.value = false
+    }
+  }
+
   async function handleBackClick() {
     if (!shuffleHistory.value.length) return
     const previous = shuffleHistory.value[0]
@@ -198,173 +199,4 @@
   })
 </script>
 
-<style scoped>
-  .control-btn {
-    border: none;
-    background: rgba(255, 255, 255, 0.12);
-    color: #f9fafb;
-    padding: 0.5rem 0.7rem;
-    border-radius: 6px;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
-  .control-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-
-  .control-row {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .control-spacer {
-    height: 1px;
-  }
-
-  .panel-title {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .player-controls {
-    position: absolute;
-    left: 50%;
-    bottom: 0.25rem;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    background: rgba(31, 41, 55, 0.88);
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    width: 60%;
-    max-width: 60vw;
-    z-index: 3;
-  }
-
-  .player-icon {
-    font-size: 3rem;
-  }
-
-  .player-placeholder {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    font-size: 1rem;
-  }
-
-  .player-video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: #0b0f1a;
-    z-index: 1;
-  }
-
-  .progress-bar {
-    flex: 1;
-    cursor: pointer;
-    user-select: none;
-    touch-action: none;
-  }
-
-  .progress-bar:active {
-    cursor: grabbing;
-  }
-
-  .progress-fill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    background: #667eea;
-    width: 0%;
-    transition: width 0.1s linear;
-  }
-
-  .progress-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-  }
-
-  .progress-track {
-    height: 6px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .time-label {
-    font-size: 0.85rem;
-    color: #e5e7eb;
-    min-width: 48px;
-    text-align: center;
-  }
-
-  .transport-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-  }
-
-  .volume-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.5rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    justify-self: end;
-  }
-
-  .volume-label {
-    font-size: 0.78rem;
-    color: #e5e7eb;
-    min-width: 36px;
-    text-align: right;
-  }
-
-  .volume-slider {
-    width: 110px;
-    appearance: none;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.35);
-    outline: none;
-  }
-
-  .volume-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #667eea;
-    box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.8);
-    cursor: pointer;
-  }
-
-  .volume-slider::-moz-range-thumb {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #667eea;
-    border: none;
-    box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.8);
-    cursor: pointer;
-  }
-</style>
+<style src="../views/VideoPlayer.css"></style>

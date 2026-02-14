@@ -1,0 +1,108 @@
+.segment-input {
+    padding: 0.6rem 0.75rem;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    color: #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .segment-input:focus {
+    outline: 2px solid rgba(99, 102, 241, 0.45);
+    border-color: transparent;
+  }
+
+  .range-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+  }
+  .range-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollable-range-list {
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .scrollable-range-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .range-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    background: rgba(12, 18, 30, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 10px;
+  }
+
+  .range-times {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr) 32px;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .range-input {
+    width: 100%;
+    height: 32px;
+    padding: 0.5rem 0.65rem;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    color: #e5e7eb;
+    font-size: 0.85rem;
+  }
+
+  .range-input:focus {
+    outline: 2px solid rgba(99, 102, 241, 0.45);
+    border-color: transparent;
+  }
+
+  .time-btn {
+    height: 32px;
+    width: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 8px;
+    color: #e0e7ff;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .time-btn:hover {
+    background: rgba(99, 102, 241, 0.35);
+  }
+
+  .btn-ghost {
+    align-self: flex-start;
+    padding: 0.35rem 0.6rem;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+    color: #cbd5f5;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .btn-ghost:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #e0e7ff;
+  }
+
+  .range-empty {
+    color: #9ca3af;
+    font-size: 0.82rem;
+  }

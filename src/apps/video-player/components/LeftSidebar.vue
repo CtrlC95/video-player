@@ -398,28 +398,6 @@
 </template>
 
 <script setup lang="ts">
-  function formatVideoTitle(video: VideoMetadata) {
-    return (video.songName || '').trim() || video.fileName
-  }
-
-  function formatVideoMeta(video: VideoMetadata) {
-    return `${(video.artist || '').trim() || '—'} · ${(video.creator || '').trim() || '—'}`
-  }
-  const shuffleNowTitle = computed(() => {
-    return selectedVideo.value ? formatVideoTitle(selectedVideo.value) : '—'
-  })
-
-  const shuffleNowMeta = computed(() => {
-    return selectedVideo.value ? formatVideoMeta(selectedVideo.value) : '—'
-  })
-
-  const shuffleNextTitle = computed(() => {
-    return nextShuffleVideo.value ? formatVideoTitle(nextShuffleVideo.value) : '—'
-  })
-
-  const shuffleNextMeta = computed(() => {
-    return nextShuffleVideo.value ? formatVideoMeta(nextShuffleVideo.value) : '—'
-  })
   import { computed, nextTick, ref, watch } from 'vue'
   import type { VideoMetadata } from '../../../shared/types/media'
   import { useVideoFileBrowser } from '../../../shared/composables/useFileBrowser'
@@ -436,18 +414,20 @@
     tagMatchMode,
     girlMatchMode,
     videosInDatabase,
+    suppressHistoryOnce,
+  } from '../../../shared/composables/useVideoplayerState'
+  import { videoDataService } from '../../../shared/services/videoDataService'
+  import {
     normalizeList,
     matchesGirlFilter,
     matchesThemeFilter,
     playVideoNow,
     playNext,
     pickRandomVideo,
-    suppressHistoryOnce,
     getShuffleCandidates,
     weightedPick,
     pickRandomByTags,
-  } from '../../../shared/composables/useSidebarState'
-  import { videoDataService } from '../../../shared/services/videoDataService'
+  } from '../../../shared/utils/videoPlayerUtils'
 
   const { currentPath, selectDirectory } = useVideoFileBrowser()
   const { directoryHandle } = useVideoFileBrowser()
@@ -470,9 +450,21 @@
   const isTagSearchFocused = ref(false)
   const historyListEl = ref<HTMLElement | null>(null)
 
-  function normalizeText(value?: string | null) {
-    return (value ?? '').trim().toLowerCase()
-  }
+  const shuffleNowTitle = computed(() => {
+    return selectedVideo.value ? formatVideoTitle(selectedVideo.value) : '—'
+  })
+
+  const shuffleNowMeta = computed(() => {
+    return selectedVideo.value ? formatVideoMeta(selectedVideo.value) : '—'
+  })
+
+  const shuffleNextTitle = computed(() => {
+    return nextShuffleVideo.value ? formatVideoTitle(nextShuffleVideo.value) : '—'
+  })
+
+  const shuffleNextMeta = computed(() => {
+    return nextShuffleVideo.value ? formatVideoMeta(nextShuffleVideo.value) : '—'
+  })
 
   const filteredTags = computed(() => {
     const search = tagSearch.value.trim().toLowerCase()
@@ -636,15 +628,6 @@
     return [...queuedVideos.value].reverse()
   })
 
-  function handleTagOption(item: { type: 'theme' | 'no-theme'; tag: string }) {
-    if (item.type === 'no-theme') {
-      onlyNoThemes.value = true
-      tagSearch.value = ''
-      return
-    }
-    addTag(item.tag)
-  }
-
   const noThemesCount = computed(() => {
     const selectedGirlsLower = selectedGirls.value.map((g) => g.toLowerCase())
     return videosInDatabase.value.filter((video) => {
@@ -664,16 +647,6 @@
       return matchesThemeFilter(themesLower, selectedThemesLower)
     }).length
   })
-
-  function matchesQuery(value: string, query: string) {
-    if (!query) return true
-    return value.toLowerCase().includes(query)
-  }
-
-  function matchesSelected(value: string, selected: string | null) {
-    if (!selected) return true
-    return value.toLowerCase() === selected.toLowerCase()
-  }
 
   const uniqueTags = computed(() => {
     const tagsByLower = new Map<string, string>()
@@ -708,6 +681,37 @@
       a.localeCompare(b, undefined, { sensitivity: 'base' })
     )
   })
+
+  function formatVideoTitle(video: VideoMetadata) {
+    return (video.songName || '').trim() || video.fileName
+  }
+
+  function formatVideoMeta(video: VideoMetadata) {
+    return `${(video.artist || '').trim() || '—'} · ${(video.creator || '').trim() || '—'}`
+  }
+
+  function normalizeText(value?: string | null) {
+    return (value ?? '').trim().toLowerCase()
+  }
+
+  function handleTagOption(item: { type: 'theme' | 'no-theme'; tag: string }) {
+    if (item.type === 'no-theme') {
+      onlyNoThemes.value = true
+      tagSearch.value = ''
+      return
+    }
+    addTag(item.tag)
+  }
+
+  function matchesQuery(value: string, query: string) {
+    if (!query) return true
+    return value.toLowerCase().includes(query)
+  }
+
+  function matchesSelected(value: string, selected: string | null) {
+    if (!selected) return true
+    return value.toLowerCase() === selected.toLowerCase()
+  }
 
   function countVideosForGirl(girl: string) {
     const girlLower = girl.toLowerCase()
@@ -830,30 +834,6 @@
     return ''
   }
 
-  async function handleShuffleNextClick() {
-    if (playMode.value === 'search') {
-      if (queuedVideos.value.length === 0) return
-      const nextQueued = queuedVideos.value[0]
-      if (nextQueued) {
-        queuedVideos.value = queuedVideos.value.slice(1)
-        await playVideoNow(nextQueued)
-      }
-      return
-    }
-    await playNext()
-  }
-
-  async function handleShuffleHistoryClick(video: VideoMetadata) {
-    shuffleHistory.value = shuffleHistory.value.filter((item) => item.fileName !== video.fileName)
-    await playVideoNow(video)
-  }
-
-  async function handleQueuedClick(_video: VideoMetadata, reversedIndex: number) {
-    const originalIndex = queuedVideos.value.length - 1 - reversedIndex
-    if (originalIndex < 0 || originalIndex >= queuedVideos.value.length) return
-    queuedVideos.value = queuedVideos.value.filter((_, idx) => idx !== originalIndex)
-  }
-
   function handleQueuedHover(reversedIndex: number) {
     hoveredQueueIndex.value = reversedIndex
   }
@@ -906,11 +886,6 @@
     tagSearch.value = ''
   }
 
-  async function initializeFromDirectoryHandle(handle: any) {
-    await videoDataService.initialize(handle)
-    videosInDatabase.value = await videoDataService.loadVideos()
-  }
-
   function updateShuffleHistoryLimit() {
     const el = historyListEl.value
     if (!el) return
@@ -937,6 +912,35 @@
     if (shuffleHistory.value.length > maxItems) {
       shuffleHistory.value = shuffleHistory.value.slice(0, maxItems)
     }
+  }
+
+  async function handleShuffleNextClick() {
+    if (playMode.value === 'search') {
+      if (queuedVideos.value.length === 0) return
+      const nextQueued = queuedVideos.value[0]
+      if (nextQueued) {
+        queuedVideos.value = queuedVideos.value.slice(1)
+        await playVideoNow(nextQueued)
+      }
+      return
+    }
+    await playNext()
+  }
+
+  async function handleShuffleHistoryClick(video: VideoMetadata) {
+    shuffleHistory.value = shuffleHistory.value.filter((item) => item.fileName !== video.fileName)
+    await playVideoNow(video)
+  }
+
+  async function handleQueuedClick(_video: VideoMetadata, reversedIndex: number) {
+    const originalIndex = queuedVideos.value.length - 1 - reversedIndex
+    if (originalIndex < 0 || originalIndex >= queuedVideos.value.length) return
+    queuedVideos.value = queuedVideos.value.filter((_, idx) => idx !== originalIndex)
+  }
+
+  async function initializeFromDirectoryHandle(handle: any) {
+    await videoDataService.initialize(handle)
+    videosInDatabase.value = await videoDataService.loadVideos()
   }
 
   watch(
@@ -1037,281 +1041,4 @@
   })
 </script>
 
-<style scoped>
-  .btn-secondary {
-    padding: 0.65rem 1.25rem;
-    background: rgba(255, 255, 255, 0.12);
-    color: #f9fafb;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: background 0.2s ease;
-  }
-
-  .btn-secondary.active {
-    background: rgba(102, 126, 234, 0.45);
-    border-color: rgba(102, 126, 234, 0.8);
-  }
-
-  .btn-secondary:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .btn-select {
-    padding: 0.75rem 1.5rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: background 0.2s ease;
-  }
-
-  .btn-select:hover {
-    background: #5568d3;
-  }
-
-  .empty-state {
-    padding: 1.5rem 0.5rem;
-    text-align: center;
-    color: #cfcfcf;
-    font-size: 0.9rem;
-  }
-
-  .file-icon {
-    font-size: 1rem;
-    min-width: 20px;
-  }
-
-  .file-item {
-    padding: 0.65rem 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: background 0.2s ease;
-    color: #f5f5f5;
-  }
-
-  .file-item:last-child {
-    border-bottom: none;
-  }
-
-  .file-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .file-list {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    max-height: 65vh;
-    overflow-y: auto;
-  }
-
-  .file-name {
-    font-size: 0.9rem;
-    word-break: break-word;
-  }
-
-  .history-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(17, 24, 39, 0.8);
-    color: #f9fafb;
-    text-align: left;
-    transition:
-      transform 0.15s ease,
-      box-shadow 0.15s ease,
-      border-color 0.15s ease;
-    font-size: 0.85rem;
-  }
-
-  .history-item-current {
-    border: 2px solid rgba(255, 255, 255, 0.65);
-    font-weight: 600;
-  }
-
-  .history-item-next {
-    border: 2px dotted rgba(255, 255, 255, 0.45);
-  }
-
-  .history-item-next,
-  .history-item-previous {
-    cursor: pointer;
-  }
-
-  .history-item-remove {
-    border-color: rgba(248, 113, 113, 0.9);
-    background: rgba(127, 29, 29, 0.45);
-  }
-
-  .history-item-remove .search-result-meta {
-    color: #fecaca;
-    opacity: 1;
-  }
-
-  .history-item-upcoming {
-    border: 2px dotted rgba(255, 255, 255, 0.45);
-  }
-
-  .history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow: hidden;
-  }
-
-  .history-list-scrollable {
-    max-height: 30vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 4px;
-  }
-
-  .left-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 320px;
-    height: 100vh;
-    background: rgba(31, 41, 55, 0.9);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-radius: 0 12px 12px 0;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    z-index: 5;
-  }
-
-  .path-display {
-    padding: 0.6rem 0.75rem;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: #e0e0e0;
-    word-break: break-all;
-  }
-
-  .search-empty {
-    font-size: 0.85rem;
-    opacity: 0.7;
-    margin: 4px 0 0;
-  }
-
-  .search-result {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(17, 24, 39, 0.8);
-    color: #f9fafb;
-    text-align: left;
-    cursor: pointer;
-    transition:
-      transform 0.15s ease,
-      box-shadow 0.15s ease,
-      border-color 0.15s ease;
-    width: 100%;
-  }
-
-  .search-result-play {
-    background: linear-gradient(90deg, rgba(17, 24, 39, 0.8) 0%, rgba(34, 197, 94, 0.25) 60%);
-    border-color: rgba(34, 197, 94, 0.5);
-  }
-
-  .search-result-queue {
-    background: linear-gradient(90deg, rgba(96, 165, 250, 0.25) 0%, rgba(17, 24, 39, 0.8) 60%);
-    border-color: rgba(96, 165, 250, 0.5);
-  }
-
-  .search-result-title {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-
-  .search-result-meta {
-    font-size: 0.8rem;
-    opacity: 0.75;
-  }
-
-  .search-result:hover {
-    border-color: rgba(255, 255, 255, 0.45);
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
-    transform: translateY(-1px);
-  }
-
-  .tag-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: rgba(17, 24, 39, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    margin-top: 0.35rem;
-    max-height: 320px;
-    overflow-y: auto;
-    z-index: 6;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
-    padding: 0.25rem;
-  }
-
-  .tag-mode {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-  }
-
-  .tag-option {
-    width: 100%;
-    text-align: left;
-    padding: 0.6rem 0.8rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: none;
-    color: #f9fafb;
-    cursor: pointer;
-    border-radius: 8px;
-    font-size: 0.9rem;
-  }
-
-  .tag-option:hover {
-    background: rgba(102, 126, 234, 0.25);
-  }
-
-  .tag-search {
-    position: relative;
-  }
-
-  .tag-search-input {
-    width: 100%;
-    padding: 0.6rem 0.75rem;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f9fafb;
-    font-size: 0.9rem;
-  }
-
-  .tag-search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
-</style>
+<style src="../views/LeftSidebar.css"></style>
