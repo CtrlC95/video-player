@@ -1,37 +1,39 @@
 <template>
-  <aside class="right-sidebar">
-    <div class="panel-block">
-      <p class="panel-label">Video tags</p>
-      <input v-model="videoTagDraft" class="tag-input" type="text" placeholder="Input" />
-      <button class="btn-select" type="button" @click="applyVideoTag">Apply</button>
-      <ul v-if="currentTagList.length" class="tag-list">
-        <li
-          v-for="(tag, index) in currentTagList"
-          :key="`${tag}-${index}`"
-          class="tag-item"
-          @click="removeTagAt(index)"
-        >
-          {{ tag }}
-        </li>
-      </ul>
-    </div>
-
-    <div v-if="canEditRanges" class="panel-block">
-      <p v-if="selectedRangeOutputName" class="field-value">
-        Selected output: {{ selectedRangeOutputName }}
-      </p>
-      <button class="btn-select" type="button" :disabled="!canRender" @click="renderClips">
-        Render
-      </button>
-      <p v-if="renderMessage" class="field-value">{{ renderMessage }}</p>
-      <div v-if="renderPreview.length" class="render-preview">
-        <p class="panel-label">Preview</p>
-        <ul class="render-list">
-          <li v-for="item in renderPreview" :key="item.id" class="render-item">
-            <span class="render-name">{{ item.name }}</span>
-            <span class="render-count">{{ item.count }} clips</span>
+  <aside class="sidebar right">
+    <div class="sidebar-content">
+      <div class="panel-block">
+        <p class="panel-label">Video tags</p>
+        <input v-model="videoTagDraft" class="tag-input" type="text" placeholder="Input" />
+        <button class="btn-select" type="button" @click="applyVideoTag">Apply</button>
+        <ul v-if="currentTagList.length" class="tag-list">
+          <li
+            v-for="(tag, index) in currentTagList"
+            :key="`${tag}-${index}`"
+            class="tag-item"
+            @click="removeTagAt(index)"
+          >
+            {{ tag }}
           </li>
         </ul>
+      </div>
+
+      <div v-if="canEditRanges" class="panel-block">
+        <p v-if="selectedRangeOutputName" class="field-value">
+          Selected output: {{ selectedRangeOutputName }}
+        </p>
+        <button class="btn-select" type="button" :disabled="!canRender" @click="renderClips">
+          Render
+        </button>
+        <p v-if="renderMessage" class="field-value">{{ renderMessage }}</p>
+        <div v-if="renderPreview.length" class="render-preview">
+          <p class="panel-label">Preview</p>
+          <ul class="render-list">
+            <li v-for="item in renderPreview" :key="item.id" class="render-item">
+              <span class="render-name">{{ item.name }}</span>
+              <span class="render-count">{{ item.count }} clips</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </aside>

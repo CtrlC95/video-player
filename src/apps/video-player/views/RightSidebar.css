@@ -1,112 +1,94 @@
 .option-chip {
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f9fafb;
-    border-radius: 999px;
-    padding: 0.35rem 0.7rem;
-    font-size: 0.78rem;
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease;
-  }
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
 
-  .option-chip.active {
-    background: rgba(102, 126, 234, 0.35);
-    border-color: rgba(102, 126, 234, 0.8);
-    color: #fff;
-  }
+.option-chip.active {
+  background: rgba(102, 126, 234, 0.35);
+  border-color: rgba(102, 126, 234, 0.8);
+  color: #fff;
+}
 
-  .option-chip:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
+.option-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
 
-  .option-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    justify-content: center;
-  }
+.option-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+}
 
-  .radio-group {
-    display: flex;
-    justify-content: center;
-    gap: 0.75rem;
-  }
+.radio-group {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
 
-  .radio-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    color: #f9fafb;
-    cursor: pointer;
-  }
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #f9fafb;
+  cursor: pointer;
+}
 
-  .radio-option input[type='radio'] {
-    cursor: pointer;
-  }
+.radio-option input[type='radio'] {
+  cursor: pointer;
+}
 
-  .right-sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 320px;
-    height: 100vh;
-    background: rgba(31, 41, 55, 0.9);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-radius: 12px 0 0 12px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    z-index: 5;
-  }
+.sidebar-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+  font-size: 0.82rem;
+}
 
-  .sidebar-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.5rem 0.65rem;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f9fafb;
-    font-size: 0.82rem;
-  }
+.sidebar-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
 
-  .sidebar-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
+.sidebar-select {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+  font-size: 0.85rem;
+  text-align: center;
+  min-height: 2.1rem;
+}
 
-  .sidebar-select {
-    width: 100%;
-    padding: 0.45rem 0.6rem;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f9fafb;
-    font-size: 0.85rem;
-    text-align: center;
-    min-height: 2.1rem;
-  }
+.sidebar-select option {
+  color: #111827;
+}
 
-  .sidebar-select option {
-    color: #111827;
-  }
+.tag-update-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: center;
+  overflow: hidden;
+}
 
-  .tag-update-row {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.6rem;
-    align-items: center;
-    overflow: hidden;
-  }
-
-  .tag-update-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    width: 100%;
-  }
+.tag-update-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}

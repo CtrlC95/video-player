@@ -1,14 +1,8 @@
 <template>
-  <div class="video-player-app">
-    <main class="player-main">
-      <div class="player-stage" @wheel.prevent="handleVolumeWheel">
-        <LeftSidebar />
-        <NowPlaying />
-        <VideoPlayer />
-        <RightSidebar />
-      </div>
-    </main>
-  </div>
+  <LeftSidebar />
+  <NowPlaying />
+  <VideoPlayer />
+  <RightSidebar />
 </template>
 
 <script setup lang="ts">

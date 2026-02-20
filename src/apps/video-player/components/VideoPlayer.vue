@@ -12,6 +12,7 @@
     <p>Select a video to start playback</p>
   </div>
 
+  <!-- <div class="player-controls hidden"> -->
   <div class="player-controls">
     <div class="progress-row">
       <span class="time-label">{{ currentTimeLabel }}</span>

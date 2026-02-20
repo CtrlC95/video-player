@@ -1,77 +1,79 @@
 <template>
-  <aside class="left-sidebar">
-    <div class="panel-block">
-      <button class="btn-select" @click="selectSongFile">Select song</button>
-      <button class="btn-select" type="button" @click="selectVideoFile">Select file</button>
-      <button class="btn-select" @click="selectExportDirectory">Select export folder</button>
-    </div>
-
-    <div v-if="canEditRanges" class="panel-block">
-      <label class="panel-label" for="segment-length">
-        Segment length (s), BPS ({{ songBpsLabel }})
-      </label>
-      <input
-        id="segment-length"
-        v-model.number="segmentLength"
-        class="segment-input"
-        type="number"
-        min="1"
-        step="1"
-      />
-      <button class="btn-select" type="button" @click="addRange">Add range</button>
-    </div>
-
-    <div v-if="canEditRanges" class="panel-block">
-      <p class="panel-label">Ranges</p>
-      <div v-if="ranges.length" class="range-list scrollable-range-list">
-        <div v-for="(range, index) in ranges" :key="range.id" class="range-item">
-          <input v-model="range.tag" class="range-input" type="text" placeholder="Tag" />
-          <div class="range-times">
-            <input
-              :value="formatTime(range.start)"
-              class="range-input"
-              type="text"
-              inputmode="numeric"
-              placeholder="Start (mm:ss)"
-              @input="(event) => updateRangeTime(range, index, 'start', event)"
-            />
-            <button
-              class="time-btn"
-              type="button"
-              title="Set start to current time"
-              @click="setRangeTime(range, index, 'start')"
-            >
-              +
-            </button>
-            <input
-              :value="formatTime(range.end)"
-              class="range-input"
-              type="text"
-              inputmode="numeric"
-              placeholder="End (mm:ss)"
-              @input="(event) => updateRangeTime(range, index, 'end', event)"
-            />
-            <button
-              class="time-btn"
-              type="button"
-              title="Set end to current time"
-              @click="setRangeTime(range, index, 'end')"
-            >
-              +
-            </button>
-          </div>
-          <button
-            class="btn-ghost"
-            type="button"
-            :disabled="!canRender"
-            @click="renderRange(index)"
-          >
-            Render range
-          </button>
-          <button class="btn-ghost" type="button" @click="removeRange(range.id)">Remove</button>
-        </div>
+  <aside class="sidebar left">
+    <div class="sidebar-content">
+      <div class="panel-block">
+        <button class="btn-select" @click="selectSongFile">Select song</button>
+        <button class="btn-select" type="button" @click="selectVideoFile">Select file</button>
+        <button class="btn-select" @click="selectExportDirectory">Select export folder</button>
       </div>
-      <p v-else class="range-empty">No ranges yet.</p>
+
+      <div v-if="canEditRanges" class="panel-block">
+        <label class="panel-label" for="segment-length">
+          Segment length (s), BPS ({{ songBpsLabel }})
+        </label>
+        <input
+          id="segment-length"
+          v-model.number="segmentLength"
+          class="segment-input"
+          type="number"
+          min="1"
+          step="1"
+        />
+        <button class="btn-select" type="button" @click="addRange">Add range</button>
+      </div>
+
+      <div v-if="canEditRanges" class="panel-block">
+        <p class="panel-label">Ranges</p>
+        <div v-if="ranges.length" class="range-list scrollable-range-list">
+          <div v-for="(range, index) in ranges" :key="range.id" class="range-item">
+            <input v-model="range.tag" class="range-input" type="text" placeholder="Tag" />
+            <div class="range-times">
+              <input
+                :value="formatTime(range.start)"
+                class="range-input"
+                type="text"
+                inputmode="numeric"
+                placeholder="Start (mm:ss)"
+                @input="(event) => updateRangeTime(range, index, 'start', event)"
+              />
+              <button
+                class="time-btn"
+                type="button"
+                title="Set start to current time"
+                @click="setRangeTime(range, index, 'start')"
+              >
+                +
+              </button>
+              <input
+                :value="formatTime(range.end)"
+                class="range-input"
+                type="text"
+                inputmode="numeric"
+                placeholder="End (mm:ss)"
+                @input="(event) => updateRangeTime(range, index, 'end', event)"
+              />
+              <button
+                class="time-btn"
+                type="button"
+                title="Set end to current time"
+                @click="setRangeTime(range, index, 'end')"
+              >
+                +
+              </button>
+            </div>
+            <button
+              class="btn-ghost"
+              type="button"
+              :disabled="!canRender"
+              @click="renderRange(index)"
+            >
+              Render range
+            </button>
+            <button class="btn-ghost" type="button" @click="removeRange(range.id)">Remove</button>
+          </div>
+        </div>
+        <p v-else class="range-empty">No ranges yet.</p>
+      </div>
     </div>
   </aside>
 </template>

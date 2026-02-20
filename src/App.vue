@@ -6,7 +6,7 @@
       @mouseleave="navHoverActive = false"
     ></div>
     <header
-      class="app-header"
+      class="app-header hidden"
       @mouseenter="navHoverActive = true"
       @mouseleave="navHoverActive = false"
     >
@@ -15,21 +15,21 @@
           {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
         </button>
         <button
-          class="nav-button nav-left"
+          class="nav-button"
           :class="{ active: selectedApp === 'tagging-tool' }"
           @click="selectedApp = 'tagging-tool'"
         >
           Tagging Tool
         </button>
         <button
-          class="nav-button nav-center"
+          class="nav-button"
           :class="{ active: selectedApp === 'video-player' }"
           @click="selectedApp = 'video-player'"
         >
           Video Player
         </button>
         <button
-          class="nav-button nav-right"
+          class="nav-button"
           :class="{ active: selectedApp === 'edit-tool' }"
           @click="selectedApp = 'edit-tool'"
         >

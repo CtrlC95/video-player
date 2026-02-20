@@ -1,138 +1,140 @@
 <template>
-  <aside class="right-sidebar">
-    <div class="tagging-panel" v-if="selectedFile">
-      <h2 class="video-title">{{ selectedFile.name }}</h2>
+  <aside class="sidebar right">
+    <div class="sidebar-content">
+      <div class="tagging-panel" v-if="selectedFile">
+        <h2 class="video-title">{{ selectedFile.name }}</h2>
 
-      <div v-if="fileMetadata" class="file-info">
-        <p :class="{ 'date-old': isDateOld, 'date-recent': isDateRecent }">
-          <strong>Created:</strong> {{ fileMetadata.created }}
-        </p>
-      </div>
+        <div v-if="fileMetadata" class="file-info">
+          <p :class="{ 'date-old': isDateOld, 'date-recent': isDateRecent }">
+            <strong>Created:</strong> {{ fileMetadata.created }}
+          </p>
+        </div>
 
-      <div class="form-group">
-        <label>Creator</label>
-        <input
-          :value="creator"
-          @input="$emit('update:creator', ($event.target as HTMLInputElement).value)"
-          type="text"
-          placeholder="Creator name"
-          list="creator-list"
-        />
-        <datalist id="creator-list">
-          <option v-for="name in uniqueCreators" :key="name" :value="name" />
-        </datalist>
-      </div>
-
-      <div class="form-group">
-        <label>Song Name</label>
-        <input
-          :value="songName"
-          @input="$emit('update:songName', ($event.target as HTMLInputElement).value)"
-          type="text"
-          placeholder="Song name"
-          list="song-list"
-        />
-        <datalist id="song-list">
-          <option v-for="name in filteredSongSuggestions" :key="name" :value="name" />
-        </datalist>
-      </div>
-
-      <div class="form-group">
-        <label>Artist</label>
-        <div class="autocomplete-wrapper">
+        <div class="form-group">
+          <label>Creator</label>
           <input
-            :value="artist"
-            @input="handleArtistInput"
+            :value="creator"
+            @input="$emit('update:creator', ($event.target as HTMLInputElement).value)"
             type="text"
-            placeholder="Artist name (comma-separated)"
+            placeholder="Creator name"
+            list="creator-list"
           />
-          <div
-            v-if="showArtistSuggestions && filteredArtistSuggestions.length > 0"
-            class="autocomplete-dropdown"
-          >
+          <datalist id="creator-list">
+            <option v-for="name in uniqueCreators" :key="name" :value="name" />
+          </datalist>
+        </div>
+
+        <div class="form-group">
+          <label>Song Name</label>
+          <input
+            :value="songName"
+            @input="$emit('update:songName', ($event.target as HTMLInputElement).value)"
+            type="text"
+            placeholder="Song name"
+            list="song-list"
+          />
+          <datalist id="song-list">
+            <option v-for="name in filteredSongSuggestions" :key="name" :value="name" />
+          </datalist>
+        </div>
+
+        <div class="form-group">
+          <label>Artist</label>
+          <div class="autocomplete-wrapper">
+            <input
+              :value="artist"
+              @input="handleArtistInput"
+              type="text"
+              placeholder="Artist name (comma-separated)"
+            />
             <div
-              v-for="suggestion in filteredArtistSuggestions"
-              :key="suggestion"
-              class="autocomplete-item"
-              @mousedown.prevent="selectArtistSuggestion(suggestion)"
+              v-if="showArtistSuggestions && filteredArtistSuggestions.length > 0"
+              class="autocomplete-dropdown"
             >
-              {{ suggestion }}
+              <div
+                v-for="suggestion in filteredArtistSuggestions"
+                :key="suggestion"
+                class="autocomplete-item"
+                @mousedown.prevent="selectArtistSuggestion(suggestion)"
+              >
+                {{ suggestion }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label>Web Address</label>
-        <input
-          :value="webAddress"
-          @input="$emit('update:webAddress', ($event.target as HTMLInputElement).value)"
-          type="text"
-          placeholder="https://..."
-        />
-      </div>
-
-      <div class="form-group">
-        <label>Main Girl</label>
-        <div class="autocomplete-wrapper">
+        <div class="form-group">
+          <label>Web Address</label>
           <input
-            :value="mainGirl"
-            @input="handleMainGirlInput"
-            @paste="handleMainGirlPaste"
+            :value="webAddress"
+            @input="$emit('update:webAddress', ($event.target as HTMLInputElement).value)"
             type="text"
-            placeholder="Main girl name (comma-separated)"
+            placeholder="https://..."
           />
-          <div
-            v-if="showMainGirlSuggestions && filteredMainGirlSuggestions.length > 0"
-            class="autocomplete-dropdown"
-          >
+        </div>
+
+        <div class="form-group">
+          <label>Main Girl</label>
+          <div class="autocomplete-wrapper">
+            <input
+              :value="mainGirl"
+              @input="handleMainGirlInput"
+              @paste="handleMainGirlPaste"
+              type="text"
+              placeholder="Main girl name (comma-separated)"
+            />
             <div
-              v-for="suggestion in filteredMainGirlSuggestions"
-              :key="suggestion"
-              class="autocomplete-item"
-              @mousedown.prevent="selectMainGirlSuggestion(suggestion)"
+              v-if="showMainGirlSuggestions && filteredMainGirlSuggestions.length > 0"
+              class="autocomplete-dropdown"
             >
-              {{ suggestion }}
+              <div
+                v-for="suggestion in filteredMainGirlSuggestions"
+                :key="suggestion"
+                class="autocomplete-item"
+                @mousedown.prevent="selectMainGirlSuggestion(suggestion)"
+              >
+                {{ suggestion }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label>Theme</label>
-        <div class="autocomplete-wrapper">
-          <input
-            :value="theme"
-            @input="handleThemeInput"
-            type="text"
-            placeholder="Theme (comma-separated)"
-          />
-          <div
-            v-if="showThemeSuggestions && filteredThemeSuggestions.length > 0"
-            class="autocomplete-dropdown"
-          >
+        <div class="form-group">
+          <label>Theme</label>
+          <div class="autocomplete-wrapper">
+            <input
+              :value="theme"
+              @input="handleThemeInput"
+              type="text"
+              placeholder="Theme (comma-separated)"
+            />
             <div
-              v-for="suggestion in filteredThemeSuggestions"
-              :key="suggestion"
-              class="autocomplete-item"
-              @mousedown.prevent="selectThemeSuggestion(suggestion)"
+              v-if="showThemeSuggestions && filteredThemeSuggestions.length > 0"
+              class="autocomplete-dropdown"
             >
-              {{ suggestion }}
+              <div
+                v-for="suggestion in filteredThemeSuggestions"
+                :key="suggestion"
+                class="autocomplete-item"
+                @mousedown.prevent="selectThemeSuggestion(suggestion)"
+              >
+                {{ suggestion }}
+              </div>
             </div>
           </div>
         </div>
+
+        <button class="btn-save" @click="$emit('save')">Save</button>
+        <button class="btn-secondary" @click="getTags" :disabled="isLoadingTags">
+          {{ isLoadingTags ? 'Loading...' : 'Get tags' }}
+        </button>
+
+        <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
+        <div v-if="isLoadingTags" class="loading-message">Fetching tags from website...</div>
       </div>
-
-      <button class="btn-save" @click="$emit('save')">Save</button>
-      <button class="btn-secondary" @click="getTags" :disabled="isLoadingTags">
-        {{ isLoadingTags ? 'Loading...' : 'Get tags' }}
-      </button>
-
-      <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
-      <div v-if="isLoadingTags" class="loading-message">Fetching tags from website...</div>
-    </div>
-    <div v-else class="empty-state-panel">
-      <p>Select a video to tag</p>
+      <div v-else class="empty-state-panel">
+        <p>Select a video to tag</p>
+      </div>
     </div>
   </aside>
 </template>

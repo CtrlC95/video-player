@@ -1,11 +1,7 @@
 <template>
-  <div class="edit-tool-app">
-    <div class="edit-layout">
-      <LeftSidebar />
-      <VideoEdit />
-      <RightSidebar />
-    </div>
-  </div>
+  <LeftSidebar />
+  <VideoEdit />
+  <RightSidebar />
 </template>
 
 <script setup lang="ts">
