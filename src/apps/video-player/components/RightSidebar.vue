@@ -1,6 +1,5 @@
 <template>
-  <!-- <aside class="sidebar right hidden"> -->
-  <aside class="sidebar right">
+  <aside class="sidebar right hidden">
     <div class="sidebar-content">
       <div class="panel-block">
         <p class="panel-label">Pick Probability</p>

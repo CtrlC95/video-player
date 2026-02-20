@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar left">
+  <aside class="sidebar left always-visible">
     <div class="sidebar-content">
       <div class="panel-block">
         <button class="btn-select" @click="selectSongFile">Select song</button>

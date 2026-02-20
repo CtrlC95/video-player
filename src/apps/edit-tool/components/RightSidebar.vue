@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar right">
+  <aside class="sidebar right always-visible">
     <div class="sidebar-content">
       <div class="panel-block">
         <p class="panel-label">Video tags</p>

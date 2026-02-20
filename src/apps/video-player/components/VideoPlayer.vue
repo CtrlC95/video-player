@@ -9,11 +9,10 @@
   ></video>
   <div v-else class="player-placeholder">
     <div class="player-icon">▶</div>
-    <p>Select a video to start playback</p>
+    <p>Select directory to start playback</p>
   </div>
 
-  <!-- <div class="player-controls hidden"> -->
-  <div class="player-controls">
+  <div class="player-controls hidden">
     <div class="progress-row">
       <span class="time-label">{{ currentTimeLabel }}</span>
       <div class="progress-bar" ref="progressBarEl" @pointerdown="handleProgressPointerDown">

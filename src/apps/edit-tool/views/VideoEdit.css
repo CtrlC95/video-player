@@ -1,9 +1,11 @@
 .center-stage {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-width: 0;
+  height: 100%;
+  padding-top: 65px;
 }
 
 .center-stack {
@@ -100,4 +102,5 @@
   color: #9ca3af;
   font-size: 0.95rem;
   pointer-events: none;
+  z-index: 2;
 }

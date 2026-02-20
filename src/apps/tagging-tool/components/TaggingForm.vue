@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar right">
+  <aside class="sidebar right always-visible">
     <div class="sidebar-content">
       <div class="tagging-panel" v-if="selectedFile">
         <h2 class="video-title">{{ selectedFile.name }}</h2>

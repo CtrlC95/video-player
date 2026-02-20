@@ -1,6 +1,5 @@
 <template>
-  <div class="now-playing">
-    <!-- <div class="now-playing hidden"> -->
+  <div class="now-playing hidden">
     <div class="panel-block">
       <p class="panel-label">Song</p>
       <p class="panel-value">{{ nowPlayingSong || '—' }}</p>

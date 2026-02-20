@@ -26,12 +26,16 @@
   flex-wrap: wrap;
   gap: 0.4rem;
   justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .radio-group {
   display: flex;
   justify-content: center;
   gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .radio-option {
@@ -72,6 +76,7 @@
   font-size: 0.85rem;
   text-align: center;
   min-height: 2.1rem;
+  box-sizing: border-box;
 }
 
 .sidebar-select option {
@@ -89,6 +94,11 @@
 .tag-update-rows {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   gap: 0.6rem;
   width: 100%;
+}
+
+.sidebar.right:hover {
+  opacity: 1;
 }

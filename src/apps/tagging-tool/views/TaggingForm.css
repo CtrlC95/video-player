@@ -1,6 +1,7 @@
 .tagging-panel {
   padding: 1.25rem;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .video-title {
@@ -18,6 +19,8 @@
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .file-info p {
@@ -37,6 +40,7 @@
 
 .form-group {
   margin-bottom: 1.1rem;
+  width: 100%;
 }
 
 .form-group label {
@@ -72,6 +76,7 @@
 
 .autocomplete-wrapper {
   position: relative;
+  width: 100%;
 }
 
 .autocomplete-dropdown {

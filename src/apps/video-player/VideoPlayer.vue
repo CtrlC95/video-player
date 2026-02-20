@@ -1,8 +1,10 @@
 <template>
-  <LeftSidebar />
-  <NowPlaying />
-  <VideoPlayer />
-  <RightSidebar />
+  <div class="player-stage" @wheel.prevent="handleVolumeWheel">
+    <LeftSidebar />
+    <NowPlaying />
+    <VideoPlayer />
+    <RightSidebar />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -112,3 +114,13 @@
 </script>
 
 <style src="./VideoPlayer.css"></style>
+
+<style>
+  .player-stage {
+    display: flex;
+    flex: 1 1 0%;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+</style>

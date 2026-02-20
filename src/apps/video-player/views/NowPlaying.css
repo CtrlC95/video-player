@@ -16,3 +16,7 @@
     z-index: 4;
     pointer-events: auto;
   }
+
+  .now-playing:hover {
+    opacity: 1;
+  }

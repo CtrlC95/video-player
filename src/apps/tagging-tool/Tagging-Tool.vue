@@ -1,56 +1,57 @@
 <template>
-  <div class="handle-keydown" @keydown="handleKeydown" />
-  <FileListSidebar
-    :current-path="currentPath"
-    :filtered-files="filteredFiles"
-    :selected-file="selectedFile"
-    :filter-by="filterBy"
-    :videos-in-database="videosInDatabase"
-    :unique-creators="uniqueCreators"
-    :unique-songs="uniqueSongs"
-    :unique-artists="uniqueArtistsForSearch"
-    @select-directory="handleSelectDirectory"
-    @filter-change="filterBy = $event as 'all' | 'untagged' | 'missing'"
-    @field-filters-change="fieldFilters = $event"
-    @search-change="
-      (field, creator, song, artist) => {
-        searchField = field
-        creatorSearch = creator
-        songSearch = song
-        artistSearch = artist
-      }
-    "
-    @select-file="selectFile"
-  />
+  <div class="handle-keydown" @keydown="handleKeydown">
+    <FileListSidebar
+      :current-path="currentPath"
+      :filtered-files="filteredFiles"
+      :selected-file="selectedFile"
+      :filter-by="filterBy"
+      :videos-in-database="videosInDatabase"
+      :unique-creators="uniqueCreators"
+      :unique-songs="uniqueSongs"
+      :unique-artists="uniqueArtistsForSearch"
+      @select-directory="handleSelectDirectory"
+      @filter-change="filterBy = $event as 'all' | 'untagged' | 'missing'"
+      @field-filters-change="fieldFilters = $event"
+      @search-change="
+        (field, creator, song, artist) => {
+          searchField = field
+          creatorSearch = creator
+          songSearch = song
+          artistSearch = artist
+        }
+      "
+      @select-file="selectFile"
+    />
 
-  <VideoPlayer
-    :current-path="currentPath"
-    :selected-file="selectedFile"
-    :directory-handle="directoryHandle"
-  />
+    <VideoPlayer
+      :current-path="currentPath"
+      :selected-file="selectedFile"
+      :directory-handle="directoryHandle"
+    />
 
-  <TaggingForm
-    :selected-file="selectedFile"
-    :directory-handle="directoryHandle"
-    :creator="creator"
-    :song-name="songName"
-    :artist="artist"
-    :web-address="webAddress"
-    :main-girl="mainGirl"
-    :theme="theme"
-    :save-message="saveMessage"
-    :videos-in-database="videosInDatabase"
-    :unique-creators="uniqueCreators"
-    :unique-main-girls="uniqueMainGirls"
-    :unique-themes="uniqueThemes"
-    @update:creator="creator = $event"
-    @update:song-name="songName = $event"
-    @update:artist="artist = $event"
-    @update:web-address="webAddress = $event"
-    @update:main-girl="mainGirl = $event"
-    @update:theme="theme = $event"
-    @save="saveTags"
-  />
+    <TaggingForm
+      :selected-file="selectedFile"
+      :directory-handle="directoryHandle"
+      :creator="creator"
+      :song-name="songName"
+      :artist="artist"
+      :web-address="webAddress"
+      :main-girl="mainGirl"
+      :theme="theme"
+      :save-message="saveMessage"
+      :videos-in-database="videosInDatabase"
+      :unique-creators="uniqueCreators"
+      :unique-main-girls="uniqueMainGirls"
+      :unique-themes="uniqueThemes"
+      @update:creator="creator = $event"
+      @update:song-name="songName = $event"
+      @update:artist="artist = $event"
+      @update:web-address="webAddress = $event"
+      @update:main-girl="mainGirl = $event"
+      @update:theme="theme = $event"
+      @save="saveTags"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -435,4 +436,8 @@
   }
 </script>
 
-<style scoped></style>
+<style scoped>
+  .handle-keydown {
+    display: contents;
+  }
+</style>

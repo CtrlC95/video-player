@@ -1,6 +1,5 @@
 <template>
-  <!-- <aside class="sidebar left hidden"> -->
-  <aside class="sidebar left">
+  <aside class="sidebar left hidden">
     <div class="sidebar-content">
       <button class="btn-select" @click="selectDirectory">
         {{ currentPath ? 'Change Directory' : 'Select Directory' }}
