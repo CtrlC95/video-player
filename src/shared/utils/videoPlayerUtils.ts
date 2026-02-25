@@ -265,7 +265,7 @@ export function pickRandomVideo() {
     lastPickProbability.value = null
     return
   }
-  const candidates = videosInDatabase.value
+  const candidates = videosInDatabase.value.filter((v) => v.delete !== 'yes')
   const selection = weightedPick(candidates)
   if (!selection) {
     selectedVideo.value = null
@@ -295,13 +295,16 @@ export function pickRandomVideo() {
 
 export function getShuffleCandidates(mode: 'shuffle' | 'shuffle-tags', currentFileName?: string) {
   if (mode === 'shuffle') {
-    return videosInDatabase.value.filter((v) => v.fileName !== currentFileName)
+    return videosInDatabase.value.filter(
+      (v) => v.fileName !== currentFileName && v.delete !== 'yes'
+    )
   }
 
   const selectedThemesLower = selectedTags.value.map((t) => t.toLowerCase())
   const selectedGirlsLower = selectedGirls.value.map((g) => g.toLowerCase())
   return videosInDatabase.value.filter((v) => {
     if (currentFileName && v.fileName === currentFileName) return false
+    if (v.delete === 'yes') return false
     const themesLower = normalizeList(v.theme).map((t) => t.toLowerCase())
     const girlsLower = normalizeList(v.mainGirl).map((g) => g.toLowerCase())
     const matchesThemes = matchesThemeFilter(themesLower, selectedThemesLower)
@@ -318,7 +321,8 @@ export function parseMultiOption(value?: string) {
     .filter((item) => item)
 }
 function pickNextSequential() {
-  if (videosInDatabase.value.length === 0) {
+  const availableVideos = videosInDatabase.value.filter((v) => v.delete !== 'yes')
+  if (availableVideos.length === 0) {
     selectedVideo.value = null
     selectedVideoName.value = null
     lastPickProbability.value = null
@@ -326,22 +330,22 @@ function pickNextSequential() {
   }
 
   if (!selectedVideo.value) {
-    selectedVideo.value = videosInDatabase.value[0] ?? null
+    selectedVideo.value = availableVideos[0] ?? null
     if (selectedVideo.value) {
       selectedVideoName.value = selectedVideo.value.fileName
-      lastPickProbability.value = 1 / videosInDatabase.value.length
+      lastPickProbability.value = 1 / availableVideos.length
     }
     return
   }
 
-  const currentIndex = videosInDatabase.value.findIndex(
+  const currentIndex = availableVideos.findIndex(
     (v) => v.fileName === selectedVideo.value?.fileName
   )
-  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % videosInDatabase.value.length : 0
-  selectedVideo.value = videosInDatabase.value[nextIndex] ?? null
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % availableVideos.length : 0
+  selectedVideo.value = availableVideos[nextIndex] ?? null
   if (selectedVideo.value) {
     selectedVideoName.value = selectedVideo.value.fileName
-    lastPickProbability.value = 1 / videosInDatabase.value.length
+    lastPickProbability.value = 1 / availableVideos.length
   }
 }
 

@@ -5,6 +5,8 @@
         <button class="btn-select" @click="selectSongFile">Select song</button>
         <button class="btn-select" type="button" @click="selectVideoFile">Select file</button>
         <button class="btn-select" @click="selectExportDirectory">Select export folder</button>
+        <p v-if="isLoadingVideo" class="loading-status">Loading video... {{ loadingPercent }}%</p>
+        <p v-else-if="selectedFileName" class="loaded-status">✓ Video loaded</p>
       </div>
 
       <div v-if="canEditRanges" class="panel-block">
@@ -79,9 +81,9 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, watch } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { convertFileSrc, invoke } from '@tauri-apps/api/core'
+  import { invoke } from '@tauri-apps/api/core'
   import { open as openFile } from '@tauri-apps/plugin-fs'
   import {
     canEditRanges,
@@ -111,12 +113,20 @@
 
   let songBpmRequestId = 0
   let rangeCounter = 1
+  const isLoadingVideo = ref(false)
+  const loadingProgress = ref(0)
+  const loadingTotal = ref(0)
 
   const songBpsLabel = computed(() => {
     if (songBpmStatus.value === 'loading') return '...'
     if (songBpmStatus.value === 'error') return 'error'
     if (songBpm.value === null) return '--'
     return (songBpm.value / 60).toFixed(2)
+  })
+
+  const loadingPercent = computed(() => {
+    if (loadingTotal.value === 0) return 0
+    return Math.round((loadingProgress.value / loadingTotal.value) * 100)
   })
 
   function addRange() {
@@ -406,29 +416,51 @@
   watch(selectedFilePath, async (path) => {
     console.log('selectedFilePath watcher triggered, path:', path)
     if (path) {
-      // Use Blob for dev mode, convertFileSrc for production
-      const isDev = window.location.protocol.startsWith('http')
-      if (isDev) {
-        try {
-          const file = await openFile(path, { read: true })
-          const stat = await file.stat()
-          const buffer = new Uint8Array(stat.size)
+      isLoadingVideo.value = true
+      loadingProgress.value = 0
+      loadingTotal.value = 0
+
+      // Load video in chunks to avoid memory issues with large files
+      try {
+        const file = await openFile(path, { read: true })
+        const stat = await file.stat()
+        const fileSize = stat.size
+
+        // For large files, read in chunks (10MB at a time)
+        const chunkSize = 10 * 1024 * 1024
+        const chunks: Uint8Array[] = []
+        const totalChunks = Math.ceil(fileSize / chunkSize)
+        loadingTotal.value = totalChunks
+        let bytesRead = 0
+        let chunkIndex = 0
+
+        while (bytesRead < fileSize) {
+          const remainingBytes = fileSize - bytesRead
+          const currentChunkSize = Math.min(chunkSize, remainingBytes)
+          const buffer = new Uint8Array(currentChunkSize)
           await file.read(buffer)
-          const blob = new Blob([buffer], { type: 'video/mp4' })
-          if (videoUrl.value) {
-            URL.revokeObjectURL(videoUrl.value)
-          }
-          videoUrl.value = URL.createObjectURL(blob)
-          await file.close()
-          console.log('videoUrl (blob)', videoUrl.value)
-        } catch (err) {
-          console.error('Failed to load video file (dev mode)', err)
-          videoUrl.value = ''
+          chunks.push(buffer)
+          bytesRead += currentChunkSize
+          chunkIndex += 1
+          loadingProgress.value = chunkIndex
         }
-      } else {
-        videoUrl.value = convertFileSrc(path)
-        console.log('videoUrl (tauri)', videoUrl.value)
+
+        await file.close()
+
+        // Create blob from chunks
+        const blob = new Blob(chunks as BlobPart[], { type: 'video/mp4' })
+        if (videoUrl.value) {
+          URL.revokeObjectURL(videoUrl.value)
+        }
+        videoUrl.value = URL.createObjectURL(blob)
+        console.log('videoUrl (blob from chunks)', videoUrl.value)
+        isLoadingVideo.value = false
+      } catch (err) {
+        console.error('Failed to load video file', err)
+        videoUrl.value = ''
+        isLoadingVideo.value = false
       }
+
       // Log reactivity check
       setTimeout(() => {
         console.log('Reactive videoUrl after set:', videoUrl.value)
@@ -441,6 +473,9 @@
       }, 100)
     } else {
       videoUrl.value = ''
+      isLoadingVideo.value = false
+      loadingProgress.value = 0
+      loadingTotal.value = 0
     }
   })
 

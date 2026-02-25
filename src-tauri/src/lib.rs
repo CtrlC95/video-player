@@ -31,6 +31,8 @@ const EXCLUDED_TAGS: &[&str] = &[
 #[derive(Serialize)]
 pub struct ScrapeResult {
   pub url: String,
+  pub title: String,
+  pub all_h1s: Vec<String>,
   pub creator: Vec<String>,
   pub tags: Vec<String>,
   pub music_artist: Vec<String>,
@@ -88,7 +90,8 @@ async fn fetch_h3_and_spans(url: String) -> Result<ScrapeResult, String> {
 
   let body = response.text().await.map_err(|e| e.to_string())?;
   let document = Html::parse_document(&body);
-
+  let h1_selector = Selector::parse("#__nuxt > div > div.flex.transition-all.duration-300 > main > div > div.min-h-screen > div > div > div > div.space-y-4.min-w-0 > div.flex.items-start.justify-between.gap-4 > div.flex-1 > h1")
+    .map_err(|e| e.to_string())?;
   let h3_selector = Selector::parse("h3[class*=\"font-semibold\"][class*=\"inline-flex\"]")
     .map_err(|e| e.to_string())?;
   let creator_link_selector = Selector::parse("a[href*=\"creator=\"]")
@@ -182,7 +185,25 @@ async fn fetch_h3_and_spans(url: String) -> Result<ScrapeResult, String> {
       .collect()
   };
 
-  Ok(ScrapeResult { url, creator, tags, music_artist, music_song, models })
+  let title: String = document
+    .select(&h1_selector)
+    .next()
+    .map(|node| {
+      let text = node.text().collect::<String>();
+      clean_text(&text).trim().to_string()
+    })
+    .unwrap_or_default();
+
+  let all_h1s: Vec<String> = document
+    .select(&h1_selector)
+    .filter_map(|node| {
+      let text = node.text().collect::<String>();
+      let cleaned = clean_text(&text).trim().to_string();
+      if cleaned.is_empty() { None } else { Some(cleaned) }
+    })
+    .collect();
+
+  Ok(ScrapeResult { url, title, all_h1s, creator, tags, music_artist, music_song, models })
 }
 
 #[tauri::command]

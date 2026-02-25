@@ -12,11 +12,36 @@
         >
           <option value="all">All Videos</option>
           <option value="untagged">Untagged Videos</option>
+          <option value="edit">Edit Videos</option>
+          <option value="delete">Videos to Delete</option>
+          <option value="update">Update Tags</option>
         </select>
 
         <div v-if="localFilterBy === 'all'" class="search-box">
           <div class="filter-options">
             <div class="missing-toggles">
+              <div class="filter-field">
+                <span class="field-name">Video Title</span>
+                <div class="checkbox-pair">
+                  <label class="checkbox-label" title="Missing">
+                    <input
+                      type="checkbox"
+                      :checked="fieldFilters.videoTitle?.missing"
+                      @change="toggleFieldFilter('videoTitle', 'missing')"
+                    />
+                    M
+                  </label>
+                  <label class="checkbox-label" title="Exists">
+                    <input
+                      type="checkbox"
+                      :checked="fieldFilters.videoTitle?.exists"
+                      @change="toggleFieldFilter('videoTitle', 'exists')"
+                    />
+                    E
+                  </label>
+                </div>
+              </div>
+
               <div class="filter-field">
                 <span class="field-name">Creator</span>
                 <div class="checkbox-pair">
@@ -244,7 +269,7 @@
     currentPath: string
     filteredFiles: FileItem[]
     selectedFile: FileItem | null
-    filterBy: 'all' | 'untagged' | 'missing'
+    filterBy: 'all' | 'untagged' | 'edit' | 'delete' | 'update'
     videosInDatabase: VideoMetadata[]
     uniqueCreators: string[]
     uniqueSongs: string[]
@@ -269,6 +294,7 @@
     songName: { missing: false, exists: false },
     artist: { missing: false, exists: false },
     webAddress: { missing: false, exists: false },
+    videoTitle: { missing: false, exists: false },
     mainGirl: { missing: false, exists: false },
     theme: { missing: false, exists: false },
   })

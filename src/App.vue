@@ -77,13 +77,9 @@
     }
   }
 
-  async function handleMaximize() {
-    await toggleBorderless()
-  }
-
   onMounted(async () => {
     // Check if we're in a Tauri context
-    if (window.__TAURI__) {
+    if ((window as any).__TAURI__) {
       isInTauri.value = true
       const { getCurrentWindow } = await import('@tauri-apps/api/window')
       appWindow = getCurrentWindow()

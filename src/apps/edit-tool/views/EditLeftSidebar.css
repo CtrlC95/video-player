@@ -107,3 +107,27 @@
   color: #9ca3af;
   font-size: 0.82rem;
 }
+
+.loading-status {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
+  color: #fbbf24;
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loaded-status {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
+  color: #34d399;
+  font-weight: 500;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

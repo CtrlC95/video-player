@@ -10,122 +10,321 @@
           </p>
         </div>
 
-        <div class="form-group">
-          <label>Creator</label>
-          <input
-            :value="creator"
-            @input="$emit('update:creator', ($event.target as HTMLInputElement).value)"
-            type="text"
-            placeholder="Creator name"
-            list="creator-list"
-          />
-          <datalist id="creator-list">
-            <option v-for="name in uniqueCreators" :key="name" :value="name" />
-          </datalist>
-        </div>
-
-        <div class="form-group">
-          <label>Song Name</label>
-          <input
-            :value="songName"
-            @input="$emit('update:songName', ($event.target as HTMLInputElement).value)"
-            type="text"
-            placeholder="Song name"
-            list="song-list"
-          />
-          <datalist id="song-list">
-            <option v-for="name in filteredSongSuggestions" :key="name" :value="name" />
-          </datalist>
-        </div>
-
-        <div class="form-group">
-          <label>Artist</label>
-          <div class="autocomplete-wrapper">
-            <input
-              :value="artist"
-              @input="handleArtistInput"
-              type="text"
-              placeholder="Artist name (comma-separated)"
-            />
-            <div
-              v-if="showArtistSuggestions && filteredArtistSuggestions.length > 0"
-              class="autocomplete-dropdown"
+        <template v-if="filterBy === 'edit'">
+          <div class="form-group">
+            <label>Edit Status</label>
+            <div class="edit-status-display">{{ filteredEditValue || 'not set' }}</div>
+            <label>Change to:</label>
+            <select
+              :value="edit"
+              @input="$emit('update:edit', ($event.target as HTMLSelectElement).value)"
             >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+        </template>
+
+        <template v-else-if="filterBy === 'delete'">
+          <div class="form-group">
+            <label>Delete Status</label>
+            <div class="edit-status-display">{{ filteredDeleteValue || 'not set' }}</div>
+            <div class="action-buttons">
+              <button class="btn-keep" @click="keepVideo">Keep</button>
+              <button class="btn-delete" @click="deleteVideo">Delete</button>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="filterBy === 'update'">
+          <div
+            v-if="props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)?.updateForm"
+            class="form-group"
+          >
+            <label>Update</label>
+            <div class="text-display">
+              {{
+                props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)?.updateForm
+              }}
+            </div>
+          </div>
+
+          <div
+            v-if="
+              props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)?.updateFormGirls
+            "
+            class="form-group"
+          >
+            <label>Update Girls</label>
+            <div class="text-display">
+              {{
+                props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)
+                  ?.updateFormGirls
+              }}
+            </div>
+          </div>
+
+          <div
+            v-if="
+              props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)
+                ?.updateFormThemes
+            "
+            class="form-group"
+          >
+            <label>Update Theme</label>
+            <div class="text-display">
+              {{
+                props.videosInDatabase.find((v) => v.fileName === selectedFile?.name)
+                  ?.updateFormThemes
+              }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Main Girl</label>
+            <div class="autocomplete-wrapper">
+              <input
+                :value="mainGirl"
+                @input="handleMainGirlInput"
+                @paste="handleMainGirlPaste"
+                type="text"
+                placeholder="Main girl name (comma-separated)"
+              />
               <div
-                v-for="suggestion in filteredArtistSuggestions"
-                :key="suggestion"
-                class="autocomplete-item"
-                @mousedown.prevent="selectArtistSuggestion(suggestion)"
+                v-if="showMainGirlSuggestions && filteredMainGirlSuggestions.length > 0"
+                class="autocomplete-dropdown"
               >
-                {{ suggestion }}
+                <div
+                  v-for="suggestion in filteredMainGirlSuggestions"
+                  :key="suggestion"
+                  class="autocomplete-item"
+                  @mousedown.prevent="selectMainGirlSuggestion(suggestion)"
+                >
+                  {{ suggestion }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label>Web Address</label>
-          <input
-            :value="webAddress"
-            @input="$emit('update:webAddress', ($event.target as HTMLInputElement).value)"
-            type="text"
-            placeholder="https://..."
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Main Girl</label>
-          <div class="autocomplete-wrapper">
-            <input
-              :value="mainGirl"
-              @input="handleMainGirlInput"
-              @paste="handleMainGirlPaste"
-              type="text"
-              placeholder="Main girl name (comma-separated)"
-            />
-            <div
-              v-if="showMainGirlSuggestions && filteredMainGirlSuggestions.length > 0"
-              class="autocomplete-dropdown"
-            >
+          <div class="form-group">
+            <label>Theme</label>
+            <div class="autocomplete-wrapper">
+              <input
+                :value="theme"
+                @input="handleThemeInput"
+                type="text"
+                placeholder="Theme (comma-separated)"
+              />
               <div
-                v-for="suggestion in filteredMainGirlSuggestions"
-                :key="suggestion"
-                class="autocomplete-item"
-                @mousedown.prevent="selectMainGirlSuggestion(suggestion)"
+                v-if="showThemeSuggestions && filteredThemeSuggestions.length > 0"
+                class="autocomplete-dropdown"
               >
-                {{ suggestion }}
+                <div
+                  v-for="suggestion in filteredThemeSuggestions"
+                  :key="suggestion"
+                  class="autocomplete-item"
+                  @mousedown.prevent="selectThemeSuggestion(suggestion)"
+                >
+                  {{ suggestion }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
-        <div class="form-group">
-          <label>Theme</label>
-          <div class="autocomplete-wrapper">
-            <input
-              :value="theme"
-              @input="handleThemeInput"
-              type="text"
-              placeholder="Theme (comma-separated)"
-            />
-            <div
-              v-if="showThemeSuggestions && filteredThemeSuggestions.length > 0"
-              class="autocomplete-dropdown"
-            >
-              <div
-                v-for="suggestion in filteredThemeSuggestions"
-                :key="suggestion"
-                class="autocomplete-item"
-                @mousedown.prevent="selectThemeSuggestion(suggestion)"
+        <template v-else>
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchVideoTitle"
+                :disabled="isLoadingTags"
+                title="Fetch video title"
               >
-                {{ suggestion }}
+                [+]
+              </button>
+              <label>Video Title</label>
+            </div>
+            <input
+              :value="videoTitle"
+              @input="$emit('update:videoTitle', ($event.target as HTMLInputElement).value)"
+              type="text"
+              placeholder="Video title"
+            />
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchCreator"
+                :disabled="isLoadingTags"
+                title="Fetch creator"
+              >
+                [+]
+              </button>
+              <label>Creator</label>
+            </div>
+            <input
+              :value="creator"
+              @input="$emit('update:creator', ($event.target as HTMLInputElement).value)"
+              type="text"
+              placeholder="Creator name"
+              list="creator-list"
+            />
+            <datalist id="creator-list">
+              <option v-for="name in uniqueCreators" :key="name" :value="name" />
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchSongName"
+                :disabled="isLoadingTags"
+                title="Fetch song name"
+              >
+                [+]
+              </button>
+              <label>Song Name</label>
+            </div>
+            <input
+              :value="songName"
+              @input="$emit('update:songName', ($event.target as HTMLInputElement).value)"
+              type="text"
+              placeholder="Song name"
+              list="song-list"
+            />
+            <datalist id="song-list">
+              <option v-for="name in filteredSongSuggestions" :key="name" :value="name" />
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchArtist"
+                :disabled="isLoadingTags"
+                title="Fetch artist"
+              >
+                [+]
+              </button>
+              <label>Artist</label>
+            </div>
+            <div class="autocomplete-wrapper">
+              <input
+                :value="artist"
+                @input="handleArtistInput"
+                type="text"
+                placeholder="Artist name (comma-separated)"
+              />
+              <div
+                v-if="showArtistSuggestions && filteredArtistSuggestions.length > 0"
+                class="autocomplete-dropdown"
+              >
+                <div
+                  v-for="suggestion in filteredArtistSuggestions"
+                  :key="suggestion"
+                  class="autocomplete-item"
+                  @mousedown.prevent="selectArtistSuggestion(suggestion)"
+                >
+                  {{ suggestion }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <button class="btn-save" @click="$emit('save')">Save</button>
-        <button class="btn-secondary" @click="getTags" :disabled="isLoadingTags">
+          <div class="form-group">
+            <label>Web Address</label>
+            <input
+              :value="webAddress"
+              @input="$emit('update:webAddress', ($event.target as HTMLInputElement).value)"
+              type="text"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchMainGirl"
+                :disabled="isLoadingTags"
+                title="Fetch main girl"
+              >
+                [+]
+              </button>
+              <label>Main Girl</label>
+            </div>
+            <div class="autocomplete-wrapper">
+              <input
+                :value="mainGirl"
+                @input="handleMainGirlInput"
+                @paste="handleMainGirlPaste"
+                type="text"
+                placeholder="Main girl name (comma-separated)"
+              />
+              <div
+                v-if="showMainGirlSuggestions && filteredMainGirlSuggestions.length > 0"
+                class="autocomplete-dropdown"
+              >
+                <div
+                  v-for="suggestion in filteredMainGirlSuggestions"
+                  :key="suggestion"
+                  class="autocomplete-item"
+                  @mousedown.prevent="selectMainGirlSuggestion(suggestion)"
+                >
+                  {{ suggestion }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-button">
+              <button
+                class="fetch-btn"
+                @click="fetchTheme"
+                :disabled="isLoadingTags"
+                title="Fetch theme"
+              >
+                [+]
+              </button>
+              <label>Theme</label>
+            </div>
+            <div class="autocomplete-wrapper">
+              <input
+                :value="theme"
+                @input="handleThemeInput"
+                type="text"
+                placeholder="Theme (comma-separated)"
+              />
+              <div
+                v-if="showThemeSuggestions && filteredThemeSuggestions.length > 0"
+                class="autocomplete-dropdown"
+              >
+                <div
+                  v-for="suggestion in filteredThemeSuggestions"
+                  :key="suggestion"
+                  class="autocomplete-item"
+                  @mousedown.prevent="selectThemeSuggestion(suggestion)"
+                >
+                  {{ suggestion }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <button class="btn-save" @click="$emit('save')" v-if="filterBy !== 'delete'">Save</button>
+        <button
+          v-if="filterBy !== 'edit' && filterBy !== 'delete'"
+          class="btn-secondary"
+          @click="getTags"
+          :disabled="isLoadingTags"
+        >
           {{ isLoadingTags ? 'Loading...' : 'Get tags' }}
         </button>
 
@@ -143,20 +342,26 @@
   import { invoke } from '@tauri-apps/api/core'
   import { ref, computed, watch } from 'vue'
   import type { FileItem } from '../../../shared/composables/useFileBrowser'
+  import { videoDataService } from '../../../shared/services/videoDataService'
 
   const isLoadingTags = ref(false)
+  const isDeleting = ref(false)
   const fileMetadata = ref<{ created: string } | null>(null)
   import type { VideoMetadata } from '../../../shared/types/media'
 
   interface Props {
     selectedFile: FileItem | null
     directoryHandle: any
+    filterBy: 'all' | 'untagged' | 'edit' | 'delete' | 'update'
+    videoTitle: string
     creator: string
     songName: string
     artist: string
     webAddress: string
     mainGirl: string
     theme: string
+    edit: string
+    delete: string
     saveMessage: string
     videosInDatabase: VideoMetadata[]
     uniqueCreators: string[]
@@ -183,6 +388,26 @@
     const endDate = new Date('2024-11-26')
     const fileDate = new Date(fileMetadata.value.created)
     return fileDate > startDate && fileDate <= endDate
+  })
+
+  const filteredEditValue = computed(() => {
+    if (!props.edit) return ''
+    // Split by comma and filter out "no" and "yes"
+    return props.edit
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v && v.toLowerCase() !== 'no' && v.toLowerCase() !== 'yes')
+      .join(', ')
+  })
+
+  const filteredDeleteValue = computed(() => {
+    if (!props.delete) return ''
+    // Split by comma and filter out "no" and "yes"
+    return props.delete
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v && v.toLowerCase() !== 'no' && v.toLowerCase() !== 'yes')
+      .join(', ')
   })
 
   const allArtistNames = computed(() => {
@@ -434,6 +659,8 @@
     try {
       const result = await invoke<{
         url: string
+        title: string
+        all_h1s: string[]
         creator: string[]
         tags: string[]
         music_artist: string[]
@@ -459,6 +686,192 @@
     }
   }
 
+  async function fetchCreator() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for creator fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newCreator = result.creator[0] || ''
+      if (newCreator) {
+        $emit('update:creator', newCreator)
+      }
+    } catch (err) {
+      console.error('Failed to fetch creator', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
+  async function fetchSongName() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for song name fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newSongName = result.music_song[0] || ''
+      if (newSongName) {
+        $emit('update:songName', newSongName)
+      }
+    } catch (err) {
+      console.error('Failed to fetch song name', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
+  async function fetchArtist() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for artist fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newArtist = result.music_artist.join(', ')
+      if (newArtist) {
+        $emit('update:artist', newArtist)
+      }
+    } catch (err) {
+      console.error('Failed to fetch artist', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
+  async function fetchMainGirl() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for main girl fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newMainGirl = result.models.map((m) => capitalizeLastToken(m)).join(', ')
+      if (newMainGirl) {
+        $emit('update:mainGirl', props.mainGirl ? `${props.mainGirl}, ${newMainGirl}` : newMainGirl)
+      }
+    } catch (err) {
+      console.error('Failed to fetch main girl', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
+  async function fetchTheme() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for theme fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newTheme = result.tags.join(', ')
+      if (newTheme) {
+        $emit('update:theme', props.theme ? `${props.theme}, ${newTheme}` : newTheme)
+      }
+    } catch (err) {
+      console.error('Failed to fetch theme', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
+  async function fetchVideoTitle() {
+    const url = props.webAddress?.trim()
+    if (!url) {
+      console.warn('No web address provided for video title fetch')
+      return
+    }
+
+    isLoadingTags.value = true
+    try {
+      const result = await invoke<{
+        url: string
+        title: string
+        all_h1s: string[]
+        creator: string[]
+        tags: string[]
+        music_artist: string[]
+        music_song: string[]
+        models: string[]
+      }>('fetch_h3_and_spans', { url })
+
+      const newTitle = result.title || ''
+      if (newTitle) {
+        $emit('update:videoTitle', newTitle)
+      }
+    } catch (err) {
+      console.error('Failed to fetch video title', err)
+    } finally {
+      isLoadingTags.value = false
+    }
+  }
+
   function selectThemeSuggestion(suggestion: string) {
     const currentValue = props.theme
     const lastCommaIndex = currentValue.lastIndexOf(',')
@@ -475,14 +888,60 @@
   }
 
   const $emit = defineEmits<{
+    'update:videoTitle': [value: string]
     'update:creator': [value: string]
     'update:songName': [value: string]
     'update:artist': [value: string]
     'update:webAddress': [value: string]
     'update:mainGirl': [value: string]
     'update:theme': [value: string]
+    'update:edit': [value: string]
+    'update:delete': [value: string]
+    'update:updateForm': [value: string]
+    'update:updateFormGirls': [value: string]
+    'update:updateFormThemes': [value: string]
     save: []
+    'video-deleted': []
   }>()
+
+  function keepVideo() {
+    $emit('update:delete', 'no')
+    $emit('save')
+  }
+
+  async function deleteVideo() {
+    if (!props.selectedFile || !props.directoryHandle) {
+      console.error('No selected file or directory handle')
+      return
+    }
+
+    if (isDeleting.value) {
+      console.log('Delete already in progress, ignoring')
+      return
+    }
+
+    isDeleting.value = true
+    console.log('Starting deletion for:', props.selectedFile.name)
+
+    try {
+      // Delete the file
+      await props.directoryHandle.removeEntry(props.selectedFile.name)
+      console.log('File deleted from disk:', props.selectedFile.name)
+
+      // Delete from database
+      await videoDataService.deleteVideoByFileName(props.selectedFile.name)
+      console.log('Deleted from database:', props.selectedFile.name)
+
+      // Notify parent to refresh
+      $emit('video-deleted')
+      console.log('Deletion complete')
+    } catch (err) {
+      console.error('Error deleting:', err)
+      alert(`Error deleting file: ${err}`)
+    } finally {
+      isDeleting.value = false
+    }
+  }
 </script>
 
 <style src="../views/TaggingForm.css"></style>

@@ -87,6 +87,17 @@ export class VideoDataService {
     const videos = await this.loadVideos()
     return videos.find((v) => v.fileName === fileName)
   }
+
+  async deleteVideoByFileName(fileName: string): Promise<void> {
+    const videos = await this.loadVideos()
+    const filteredVideos = videos.filter((v) => v.fileName !== fileName)
+
+    if (filteredVideos.length === videos.length) {
+      console.warn(`Video with fileName "${fileName}" not found in database`)
+    }
+
+    await this.saveVideos(filteredVideos)
+  }
 }
 
 export const videoDataService = new VideoDataService()

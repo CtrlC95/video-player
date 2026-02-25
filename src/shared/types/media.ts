@@ -2,6 +2,7 @@ export interface VideoMetadata {
   fileName: string
   creator: string
   songName: string
+  videoTitle: string
   artist: string
   webAddress: string
   weightScore: number

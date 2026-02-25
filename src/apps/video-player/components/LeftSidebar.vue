@@ -533,6 +533,7 @@
     const items = new Map<string, { key: string; value: string; count: number; label: string }>()
 
     videosInDatabase.value.forEach((video) => {
+      if (video.delete === 'yes') return
       const song = (video.songName || '').trim()
       if (!song) return
       const artist = (video.artist || '').trim()
@@ -556,6 +557,7 @@
     const items = new Map<string, { key: string; value: string; count: number; label: string }>()
 
     videosInDatabase.value.forEach((video) => {
+      if (video.delete === 'yes') return
       const artist = (video.artist || '').trim()
       if (!artist) return
       const song = (video.songName || '').trim()
@@ -579,6 +581,7 @@
     const items = new Map<string, { key: string; value: string; count: number; label: string }>()
 
     videosInDatabase.value.forEach((video) => {
+      if (video.delete === 'yes') return
       const creator = (video.creator || '').trim()
       if (!creator) return
       const song = (video.songName || '').trim()
@@ -608,6 +611,7 @@
     const creatorQuery = normalizeText(creatorSearch.value)
 
     return videosInDatabase.value.filter((video) => {
+      if (video.delete === 'yes') return false
       const song = (video.songName || '').trim()
       const artist = (video.artist || '').trim()
       const creator = (video.creator || '').trim()
@@ -631,6 +635,7 @@
   const noThemesCount = computed(() => {
     const selectedGirlsLower = selectedGirls.value.map((g) => g.toLowerCase())
     return videosInDatabase.value.filter((video) => {
+      if (video.delete === 'yes') return false
       const themesLower = normalizeList(video.theme).map((t) => t.toLowerCase())
       const girlsLower = normalizeList(video.mainGirl).map((g) => g.toLowerCase())
       if (themesLower.length > 0) return false
@@ -641,6 +646,7 @@
   const noGirlsCount = computed(() => {
     const selectedThemesLower = selectedTags.value.map((t) => t.toLowerCase())
     return videosInDatabase.value.filter((video) => {
+      if (video.delete === 'yes') return false
       const themesLower = normalizeList(video.theme).map((t) => t.toLowerCase())
       const girlsLower = normalizeList(video.mainGirl).map((g) => g.toLowerCase())
       if (girlsLower && girlsLower.length > 0) return false
@@ -651,6 +657,7 @@
   const uniqueTags = computed(() => {
     const tagsByLower = new Map<string, string>()
     videosInDatabase.value.forEach((video) => {
+      if (video.delete === 'yes') return
       const themes = normalizeList(video.theme)
       themes.forEach((t) => {
         if (!t) return
@@ -668,6 +675,7 @@
   const uniqueGirls = computed(() => {
     const girlsByLower = new Map<string, string>()
     videosInDatabase.value.forEach((video) => {
+      if (video.delete === 'yes') return
       const girls = normalizeList(video.mainGirl)
       girls.forEach((g) => {
         if (!g) return
@@ -724,6 +732,7 @@
         : [girlLower]
 
     return videosInDatabase.value.filter((video) => {
+      if (video.delete === 'yes') return false
       const themesLower = normalizeList(video.theme).map((t) => t.toLowerCase())
       const girlsLower = normalizeList(video.mainGirl).map((g) => g.toLowerCase())
       if (girlsLower.length === 0) return false
@@ -747,6 +756,7 @@
         : [tagLower]
 
     return videosInDatabase.value.filter((video) => {
+      if (video.delete === 'yes') return false
       const themesLower = normalizeList(video.theme).map((t) => t.toLowerCase())
       const girlsLower = normalizeList(video.mainGirl).map((g) => g.toLowerCase())
       if (themesLower.length === 0) return false

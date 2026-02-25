@@ -80,6 +80,22 @@ function createBrowserState(filterExtensions?: string[]) {
       currentPath.value = dirHandle.name
       console.log('Selected directory handle:', dirHandle)
       console.log('Stored currentPath:', currentPath.value)
+
+      // Request write permission for the database file
+      try {
+        console.log('Requesting write permission for database...')
+        const databaseFileHandle = await dirHandle.getFileHandle('videos.json', { create: true })
+        const writePermission = await databaseFileHandle.requestPermission({ mode: 'readwrite' })
+
+        if (writePermission !== 'granted') {
+          console.warn('Write permission for database was not granted')
+        } else {
+          console.log('Write permission for database granted')
+        }
+      } catch (permErr) {
+        console.error('Error requesting database write permission:', permErr)
+      }
+
       await loadFromHandle(dirHandle)
     } catch (err) {
       console.error('Error selecting directory:', err)

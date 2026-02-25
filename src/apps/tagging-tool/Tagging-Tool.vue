@@ -10,7 +10,7 @@
       :unique-songs="uniqueSongs"
       :unique-artists="uniqueArtistsForSearch"
       @select-directory="handleSelectDirectory"
-      @filter-change="filterBy = $event as 'all' | 'untagged' | 'missing'"
+      @filter-change="filterBy = $event as 'all' | 'untagged' | 'edit' | 'delete' | 'update'"
       @field-filters-change="fieldFilters = $event"
       @search-change="
         (field, creator, song, artist) => {
@@ -32,24 +32,32 @@
     <TaggingForm
       :selected-file="selectedFile"
       :directory-handle="directoryHandle"
+      :filter-by="filterBy"
+      :video-title="videoTitle"
       :creator="creator"
       :song-name="songName"
       :artist="artist"
       :web-address="webAddress"
       :main-girl="mainGirl"
       :theme="theme"
+      :edit="edit"
+      :delete="deleteStatus"
       :save-message="saveMessage"
       :videos-in-database="videosInDatabase"
       :unique-creators="uniqueCreators"
       :unique-main-girls="uniqueMainGirls"
       :unique-themes="uniqueThemes"
+      @update:video-title="videoTitle = $event"
       @update:creator="creator = $event"
       @update:song-name="songName = $event"
       @update:artist="artist = $event"
       @update:web-address="webAddress = $event"
       @update:main-girl="mainGirl = $event"
       @update:theme="theme = $event"
+      @update:edit="edit = $event"
+      @update:delete="deleteStatus = $event"
       @save="saveTags"
+      @video-deleted="onVideoDeleted"
     />
   </div>
 </template>
@@ -73,18 +81,21 @@
 
   // Form state
   const selectedFile = ref<FileItem | null>(null)
+  const videoTitle = ref('')
   const creator = ref('')
   const songName = ref('')
   const artist = ref('')
   const webAddress = ref('')
   const mainGirl = ref('')
   const theme = ref('')
+  const edit = ref('no')
+  const deleteStatus = ref('no')
   const saveMessage = ref('')
 
   // Database and filter state
   const isInitialized = ref(false)
   const videosInDatabase = ref<VideoMetadata[]>([])
-  const filterBy = ref<'all' | 'untagged' | 'missing'>('all')
+  const filterBy = ref<'all' | 'untagged' | 'edit' | 'delete' | 'update'>('all')
   const searchField = ref('creator')
   const creatorSearch = ref('')
   const songSearch = ref('')
@@ -96,6 +107,7 @@
   }
 
   const fieldFilters = ref<Record<string, FieldFilterState>>({
+    videoTitle: { missing: false, exists: false },
     creator: { missing: false, exists: false },
     songName: { missing: false, exists: false },
     artist: { missing: false, exists: false },
@@ -227,6 +239,7 @@
             }
 
             fieldFilterMatches =
+              checkField('videoTitle', video.videoTitle) &&
               checkField('creator', video.creator) &&
               checkField('songName', video.songName) &&
               checkField('artist', video.artist) &&
@@ -247,6 +260,39 @@
     // Show untagged videos (not in database)
     else if (filterBy.value === 'untagged') {
       result = files.value.filter((file) => !isFileInDatabase(file.name))
+    }
+    // Show videos with edit !== 'no'
+    else if (filterBy.value === 'edit') {
+      result = videosInDatabase.value
+        .filter((video) => video.edit !== 'no')
+        .map((video) => ({
+          name: video.fileName,
+          isDirectory: false,
+          fullPath: video.fileName,
+          handle: null,
+        }))
+    }
+    // Show videos with delete === 'yes'
+    else if (filterBy.value === 'delete') {
+      result = videosInDatabase.value
+        .filter((video) => video.delete === 'yes')
+        .map((video) => ({
+          name: video.fileName,
+          isDirectory: false,
+          fullPath: video.fileName,
+          handle: null,
+        }))
+    }
+    // Show videos with updateForm !== empty
+    else if (filterBy.value === 'update') {
+      result = videosInDatabase.value
+        .filter((video) => video.updateForm && video.updateForm !== '')
+        .map((video) => ({
+          name: video.fileName,
+          isDirectory: false,
+          fullPath: video.fileName,
+          handle: null,
+        }))
     }
 
     return result
@@ -290,6 +336,7 @@
     if (isInitialized.value) {
       const existingData = await videoDataService.getVideoByFileName(file.name)
       if (existingData) {
+        videoTitle.value = existingData.videoTitle || ''
         creator.value = existingData.creator
         songName.value = existingData.songName
         artist.value = existingData.artist
@@ -300,7 +347,11 @@
         theme.value = Array.isArray(existingData.theme)
           ? existingData.theme.join(', ')
           : existingData.theme || ''
+        edit.value = existingData.edit || 'no'
+        deleteStatus.value = existingData.delete || 'no'
       } else {
+        edit.value = 'no'
+        deleteStatus.value = 'no'
         parseFilename(file.name)
       }
     } else {
@@ -362,6 +413,30 @@
     }
   }
 
+  // Clear form fields
+  function clearForm() {
+    videoTitle.value = ''
+    creator.value = ''
+    songName.value = ''
+    artist.value = ''
+    webAddress.value = ''
+    mainGirl.value = ''
+    theme.value = ''
+    edit.value = 'no'
+    deleteStatus.value = 'no'
+  }
+
+  // Handle video deletion - just refresh list without saving form data
+  async function onVideoDeleted() {
+    videosInDatabase.value = await videoDataService.loadVideos()
+    selectedFile.value = null
+    clearForm()
+    saveMessage.value = 'Video deleted successfully!'
+    setTimeout(() => {
+      saveMessage.value = ''
+    }, 3000)
+  }
+
   // Save tags to database
   async function saveTags() {
     if (!selectedFile.value) return
@@ -383,6 +458,7 @@
 
     const videoData: VideoMetadata = {
       fileName: selectedFile.value.name,
+      videoTitle: videoTitle.value,
       creator: creator.value,
       songName: songName.value,
       artist: artist.value,
@@ -390,11 +466,11 @@
       mainGirl: uniqueSortedMainGirl,
       theme: uniqueSortedTheme,
       weightScore: 1,
-      delete: existingData?.delete ?? 'no',
-      edit: existingData?.edit ?? 'option1',
-      updateForm: existingData?.updateForm ?? 'option1',
-      updateFormGirls: existingData?.updateFormGirls ?? '',
-      updateFormThemes: existingData?.updateFormThemes ?? '',
+      delete: deleteStatus.value || 'no',
+      edit: edit.value || 'no',
+      updateForm: filterBy.value === 'update' ? '' : (existingData?.updateForm ?? ''),
+      updateFormGirls: filterBy.value === 'update' ? '' : (existingData?.updateFormGirls ?? ''),
+      updateFormThemes: filterBy.value === 'update' ? '' : (existingData?.updateFormThemes ?? ''),
     }
 
     // Update form fields with cleaned values
